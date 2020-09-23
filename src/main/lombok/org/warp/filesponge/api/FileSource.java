@@ -18,14 +18,18 @@
 
 package org.warp.filesponge.api;
 
-import java.util.Optional;
+import java.nio.ByteBuffer;
 import org.jetbrains.annotations.NotNull;
 
-public interface FileAccessor {
+public interface FileSource {
 
-	void delete(@NotNull FileURI fileURI);
+	void onAvailable();
 
-	Optional<FileContent> getContent(@NotNull FileURI fileURI, boolean offlineOnly);
+	void onUnavailable();
 
-	@NotNull FileStatus getStatus(@NotNull FileURI fileURI);
+	boolean onNewFile(@NotNull FileURI fileURI, @NotNull FileExtension fileExtension);
+
+	void onFile(@NotNull FileURI fileURI, @NotNull FileSourceAvailability fileAvailability, long totalSize);
+
+	void onFilePiece(@NotNull FileURI fileURI, long offset, long size, @NotNull ByteBuffer piece);
 }

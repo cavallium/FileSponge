@@ -18,14 +18,9 @@
 
 package org.warp.filesponge.api;
 
-import java.util.Optional;
-import org.jetbrains.annotations.NotNull;
-
-public interface FileAccessor {
-
-	void delete(@NotNull FileURI fileURI);
-
-	Optional<FileContent> getContent(@NotNull FileURI fileURI, boolean offlineOnly);
-
-	@NotNull FileStatus getStatus(@NotNull FileURI fileURI);
+public enum FileSourceAvailability {
+	DOWNLOADABLE,
+	DOWNLOADING,
+	DOWNLOADED,
+	FAILED
 }

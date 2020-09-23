@@ -18,12 +18,14 @@
 
 package org.warp.filesponge;
 
-/**
- * FileSponge
- */
-public class App {
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import org.warp.filesponge.api.FileSource;
+import org.warp.filesponge.api.MirrorURI;
 
-	public static void main(String[] args) {
-		System.out.println("FileSponge");
-	}
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public abstract class BaseMirrorFileSource implements FileSource {
+
+	private final MirrorURI mirrorURI;
+
 }
