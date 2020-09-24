@@ -29,13 +29,15 @@ public interface FileAccessor {
 
 	/**
 	 * Request file deletion
+	 *
 	 * @param fileURI File URI
 	 */
 	void delete(@NotNull FileURI fileURI);
 
 	/**
 	 * Get file content
-	 * @param fileURI File URI
+	 *
+	 * @param fileURI     File URI
 	 * @param offlineOnly true to get the file from cache
 	 * @return content if found. If the request is offline the future will complete instantly
 	 */
@@ -43,6 +45,7 @@ public interface FileAccessor {
 
 	/**
 	 * Get file status
+	 *
 	 * @param fileURI File URI
 	 * @return status of this file
 	 */

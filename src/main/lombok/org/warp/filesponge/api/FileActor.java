@@ -55,11 +55,10 @@ public interface FileActor {
 	 * Send a "download file" signal
 	 *
 	 * @param fileURI File URI
-	 * @param timeout if it's null the method will return immediately,
-	 *                 if it's set the method will wait until a file <b>download request</b> has been found,
-	 *                 or the timeout time elapsed
-	 * @return empty if no pending <b>download requests</b> has been found,
-	 * true if the signal can be sent, false otherwise
+	 * @param timeout if it's null the method will return immediately, if it's set the method will wait until a file
+	 *                <b>download request</b> has been found, or the timeout time elapsed
+	 * @return empty if no pending <b>download requests</b> has been found, true if the signal can be sent, false
+	 * otherwise
 	 */
 	Optional<Boolean> downloadNextFile(FileURI fileURI, @Nullable Duration timeout);
 
@@ -67,11 +66,9 @@ public interface FileActor {
 	 * Send a "delete file" signal
 	 *
 	 * @param fileURI File URI
-	 * @param timeout if it's null the method will return immediately,
-	 *                 if it's set the method will wait until a file <b>delete request</b> has been found,
-	 *                 or the timeout time elapsed
-	 * @return empty if no pending <b>delete requests</b> has been found,
-	 * true if the signal can be sent, false otherwise
+	 * @param timeout if it's null the method will return immediately, if it's set the method will wait until a file
+	 *                <b>delete request</b> has been found, or the timeout time elapsed
+	 * @return empty if no pending <b>delete requests</b> has been found, true if the signal can be sent, false otherwise
 	 */
 	Optional<Boolean> deleteNextFile(FileURI fileURI, @Nullable Duration timeout);
 }
