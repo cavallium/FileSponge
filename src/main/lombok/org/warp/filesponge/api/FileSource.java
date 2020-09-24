@@ -22,17 +22,32 @@ import java.nio.ByteBuffer;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * FileSource receives requests from a mirror
+ * FileSource receives responses from a mirror
  */
 public interface FileSource {
 
+	/**
+	 * Called when the mirror is online
+	 */
 	void onAvailable();
 
+	/**
+	 * Called when the mirror is unreachable
+	 */
 	void onUnavailable();
 
+	/**
+	 * Called when the mirror notifies you that a new file exists
+	 */
 	boolean onNewFile(@NotNull FileURI fileURI, @NotNull FileExtension fileExtension);
 
+	/**
+	 * Called when the mirror notifies you details about a file
+	 */
 	void onFile(@NotNull FileURI fileURI, @NotNull FileSourceAvailability fileAvailability, long totalSize);
 
+	/**
+	 * Called when the mirror notifies you the bytes of a part of a file
+	 */
 	void onFilePiece(@NotNull FileURI fileURI, long offset, long size, @NotNull ByteBuffer piece);
 }
