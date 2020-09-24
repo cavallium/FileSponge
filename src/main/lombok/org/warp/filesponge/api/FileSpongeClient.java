@@ -29,7 +29,7 @@ public interface FileSpongeClient extends FileAccessor {
 
 	/**
 	 * Get this instance but without special methods
-	 * @return a limited instance of itself
+	 * @return limited instance of itself
 	 */
 	default FileAccessor asFileAccessor() {
 		return new SecureFileAccessor(this);

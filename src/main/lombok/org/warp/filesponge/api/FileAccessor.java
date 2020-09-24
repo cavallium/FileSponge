@@ -19,6 +19,7 @@
 package org.warp.filesponge.api;
 
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -26,9 +27,24 @@ import org.jetbrains.annotations.NotNull;
  */
 public interface FileAccessor {
 
+	/**
+	 * Request file deletion
+	 * @param fileURI File URI
+	 */
 	void delete(@NotNull FileURI fileURI);
 
-	Optional<FileContent> getContent(@NotNull FileURI fileURI, boolean offlineOnly);
+	/**
+	 * Get file content
+	 * @param fileURI File URI
+	 * @param offlineOnly true to get the file from cache
+	 * @return content if found. If the request is offline the future will complete instantly
+	 */
+	CompletableFuture<Optional<FileContent>> getContent(@NotNull FileURI fileURI, boolean offlineOnly);
 
+	/**
+	 * Get file status
+	 * @param fileURI File URI
+	 * @return status of this file
+	 */
 	@NotNull FileStatus getStatus(@NotNull FileURI fileURI);
 }
