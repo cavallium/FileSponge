@@ -19,6 +19,7 @@
 package org.warp.filesponge;
 
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -44,7 +45,7 @@ public class SecureFileAccessor implements FileAccessor {
 	}
 
 	@Override
-	public Optional<FileContent> getContent(@NotNull FileURI fileURI, boolean offlineOnly) {
+	public CompletableFuture<Optional<FileContent>> getContent(@NotNull FileURI fileURI, boolean offlineOnly) {
 		return fileAccessor.getContent(fileURI, offlineOnly);
 	}
 
