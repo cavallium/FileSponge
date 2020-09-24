@@ -20,6 +20,9 @@ package org.warp.filesponge.api;
 
 import java.nio.ByteBuffer;
 import org.jetbrains.annotations.NotNull;
+import org.warp.filesponge.value.FileSourceAvailability;
+import org.warp.filesponge.value.FileType;
+import org.warp.filesponge.value.FileURI;
 
 /**
  * FileSource receives responses from a mirror

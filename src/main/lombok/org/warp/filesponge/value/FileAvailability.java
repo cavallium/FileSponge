@@ -16,6 +16,12 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.warp.filesponge.api;
+package org.warp.filesponge.value;
 
-public interface MirrorURI {}
+public enum FileAvailability {
+	UNKNOWN,
+	DOWNLOADABLE,
+	DOWNLOADING,
+	DOWNLOADED,
+	FAILED
+}

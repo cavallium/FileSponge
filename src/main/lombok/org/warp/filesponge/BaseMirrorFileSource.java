@@ -21,7 +21,7 @@ package org.warp.filesponge;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.warp.filesponge.api.FileSource;
-import org.warp.filesponge.api.MirrorURI;
+import org.warp.filesponge.value.MirrorURI;
 
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public abstract class BaseMirrorFileSource implements FileSource {

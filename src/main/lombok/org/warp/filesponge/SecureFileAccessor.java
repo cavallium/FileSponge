@@ -25,9 +25,9 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.jetbrains.annotations.NotNull;
 import org.warp.filesponge.api.FileAccessor;
-import org.warp.filesponge.api.FileContent;
-import org.warp.filesponge.api.FileStatus;
-import org.warp.filesponge.api.FileURI;
+import org.warp.filesponge.value.FileContent;
+import org.warp.filesponge.value.FileStatus;
+import org.warp.filesponge.value.FileURI;
 
 /**
  * Prevent access to other methods via casting

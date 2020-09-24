@@ -16,10 +16,9 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.warp.filesponge.api;
+package org.warp.filesponge.value;
 
-public enum FileAvailability {
-	UNKNOWN,
+public enum FileSourceAvailability {
 	DOWNLOADABLE,
 	DOWNLOADING,
 	DOWNLOADED,

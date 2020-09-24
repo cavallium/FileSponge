@@ -21,6 +21,7 @@ package org.warp.filesponge.api;
 import java.time.Duration;
 import java.util.Optional;
 import org.jetbrains.annotations.Nullable;
+import org.warp.filesponge.value.FileURI;
 
 /**
  * FileActor sends signals to a mirror

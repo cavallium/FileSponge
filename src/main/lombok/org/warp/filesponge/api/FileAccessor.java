@@ -21,6 +21,9 @@ package org.warp.filesponge.api;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.jetbrains.annotations.NotNull;
+import org.warp.filesponge.value.FileContent;
+import org.warp.filesponge.value.FileStatus;
+import org.warp.filesponge.value.FileURI;
 
 /**
  * FileAccessor can be used to access files from the client side

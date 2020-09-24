@@ -16,6 +16,25 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.warp.filesponge.api;
+package org.warp.filesponge.value;
 
-public interface FileType {}
+import java.util.Optional;
+import lombok.Value;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+@Value
+public class FileStatus {
+	@NotNull FileAvailability availability;
+	@NotNull FileDataAvailability dataAvailability;
+	@Nullable Integer totalSize;
+	@Nullable Integer downloadedSize;
+
+	public Optional<Integer> getTotalSize() {
+		return Optional.ofNullable(totalSize);
+	}
+
+	public Optional<Integer> getDownloadedSize() {
+		return Optional.ofNullable(downloadedSize);
+	}
+}
