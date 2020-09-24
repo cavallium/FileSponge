@@ -18,4 +18,4 @@
 
 package org.warp.filesponge.api;
 
-public interface FileExtension {}
+public interface FileType {}

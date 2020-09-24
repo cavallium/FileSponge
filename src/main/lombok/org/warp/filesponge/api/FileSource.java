@@ -39,19 +39,19 @@ public interface FileSource {
 	/**
 	 * Called when the mirror notifies you that a new file exists
 	 */
-	boolean onNewFile(@NotNull FileURI fileURI, @NotNull FileExtension fileExtension);
+	boolean onNewFile(@NotNull FileURI fileURI, @NotNull FileType fileType);
 
 	/**
 	 * Called when the mirror notifies you details about a file.
 	 * <p>
-	 * {@link this#onNewFile(FileURI, FileExtension)} must have been already called
+	 * {@link this#onNewFile(FileURI, FileType)} must have been already called
 	 */
 	void onFile(@NotNull FileURI fileURI, @NotNull FileSourceAvailability fileAvailability, long totalSize);
 
 	/**
 	 * Called when the mirror notifies you the bytes of a part of a file.
 	 * <p>
-	 * {@link this#onNewFile(FileURI, FileExtension)} and {@link this#onFile(FileURI, FileSourceAvailability, long)} must
+	 * {@link this#onNewFile(FileURI, FileType)} and {@link this#onFile(FileURI, FileSourceAvailability, long)} must
 	 * have been already called
 	 */
 	void onFilePiece(@NotNull FileURI fileURI, long offset, long size, @NotNull ByteBuffer piece);
