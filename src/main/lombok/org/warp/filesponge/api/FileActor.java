@@ -18,4 +18,60 @@
 
 package org.warp.filesponge.api;
 
-public interface FileActor {}
+import java.time.Duration;
+import java.util.Optional;
+import org.jetbrains.annotations.Nullable;
+
+/**
+ * FileActor sends signals to a mirror
+ */
+public interface FileActor {
+
+	/**
+	 * Send a "delete file" signal
+	 *
+	 * @param fileURI File URI
+	 * @return true if the signal can be sent
+	 */
+	boolean deleteFile(FileURI fileURI);
+
+	/**
+	 * Send a "download file" signal
+	 *
+	 * @param fileURI File URI
+	 * @return true if the signal can be sent
+	 */
+	boolean downloadFile(FileURI fileURI);
+
+	/**
+	 * Check if this actor can handle signals for this file
+	 *
+	 * @param fileURI File URI
+	 * @return true if the actor can send signals related to this file
+	 */
+	boolean canHandleFile(FileURI fileURI);
+
+	/**
+	 * Send a "download file" signal
+	 *
+	 * @param fileURI File URI
+	 * @param timeout if it's null the method will return immediately,
+	 *                 if it's set the method will wait until a file <b>download request</b> has been found,
+	 *                 or the timeout time elapsed
+	 * @return empty if no pending <b>download requests</b> has been found,
+	 * true if the signal can be sent, false otherwise
+	 */
+	Optional<Boolean> downloadNextFile(FileURI fileURI, @Nullable Duration timeout);
+
+	/**
+	 * Send a "delete file" signal
+	 *
+	 * @param fileURI File URI
+	 * @param timeout if it's null the method will return immediately,
+	 *                 if it's set the method will wait until a file <b>delete request</b> has been found,
+	 *                 or the timeout time elapsed
+	 * @return empty if no pending <b>delete requests</b> has been found,
+	 * true if the signal can be sent, false otherwise
+	 */
+	Optional<Boolean> deleteNextFile(FileURI fileURI, @Nullable Duration timeout);
+}

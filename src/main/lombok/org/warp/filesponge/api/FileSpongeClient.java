@@ -18,21 +18,20 @@
 
 package org.warp.filesponge.api;
 
-import java.nio.ByteBuffer;
-import org.jetbrains.annotations.NotNull;
+import org.warp.filesponge.SecureFileAccessor;
 
 /**
- * FileSource receives requests from a mirror
+ * FileAccessor can be used to manage FileSponge and access files from the client side
  */
-public interface FileSource {
+public interface FileSpongeClient extends FileAccessor {
 
-	void onAvailable();
+	void optimizeStorage();
 
-	void onUnavailable();
-
-	boolean onNewFile(@NotNull FileURI fileURI, @NotNull FileExtension fileExtension);
-
-	void onFile(@NotNull FileURI fileURI, @NotNull FileSourceAvailability fileAvailability, long totalSize);
-
-	void onFilePiece(@NotNull FileURI fileURI, long offset, long size, @NotNull ByteBuffer piece);
+	/**
+	 * Get this instance but without special methods
+	 * @return a limited instance of itself
+	 */
+	default FileAccessor asFileAccessor() {
+		return new SecureFileAccessor(this);
+	}
 }

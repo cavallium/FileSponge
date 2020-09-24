@@ -21,6 +21,9 @@ package org.warp.filesponge.api;
 import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 
+/**
+ * FileAccessor can be used to access files from the client side
+ */
 public interface FileAccessor {
 
 	void delete(@NotNull FileURI fileURI);
