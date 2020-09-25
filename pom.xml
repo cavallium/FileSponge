@@ -52,6 +52,11 @@
       <version>RELEASE</version>
       <scope>compile</scope>
     </dependency>
+    <dependency>
+      <groupId>org.warp</groupId>
+      <artifactId>common-utils</artifactId>
+      <version>1.0.7</version>
+    </dependency>
   </dependencies>
 
   <build>
