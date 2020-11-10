@@ -20,13 +20,9 @@ package org.warp.filesponge;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import org.warp.filesponge.api.FileSource;
-import org.warp.filesponge.value.MirrorURI;
 
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-public abstract class BaseMirrorFileSource implements FileSource {
+@AllArgsConstructor(access = AccessLevel.PUBLIC)
+public class ReceiverAvailabilityManager {
 
-	protected final ReceiverAvailabilityManager receiverAvailabilityManager;
-	protected final MirrorURI mirrorURI;
-
+	private final FileMirrorsManager fileReceiversManager;
 }

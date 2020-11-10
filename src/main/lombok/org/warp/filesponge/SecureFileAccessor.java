@@ -22,7 +22,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import org.jetbrains.annotations.NotNull;
 import org.warp.filesponge.api.FileAccessor;
 import org.warp.filesponge.value.FileContent;
@@ -34,7 +33,6 @@ import org.warp.filesponge.value.FileURI;
  */
 @AllArgsConstructor
 @EqualsAndHashCode
-@ToString
 public class SecureFileAccessor implements FileAccessor {
 
 	private final FileAccessor fileAccessor;
@@ -52,5 +50,10 @@ public class SecureFileAccessor implements FileAccessor {
 	@Override
 	public @NotNull FileStatus getStatus(@NotNull FileURI fileURI) {
 		return fileAccessor.getStatus(fileURI);
+	}
+
+	@Override
+	public String toString() {
+		return fileAccessor.toString();
 	}
 }
