@@ -30,6 +30,7 @@ import org.warp.filesponge.value.MirrorURI;
 public class FileMirrorsManager {
 
 	private final Set<MirrorURI> availableMirrors = new HashSet<>();
+
 	/**
 	 * This map must be persistent
 	 */
