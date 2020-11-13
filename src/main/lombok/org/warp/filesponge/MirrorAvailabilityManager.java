@@ -22,7 +22,7 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor(access = AccessLevel.PUBLIC)
-public class ReceiverAvailabilityManager {
+public class MirrorAvailabilityManager {
 
-	private final FileMirrorsManager fileReceiversManager;
+	private final FileMirrorsManager fileMirrorsManager;
 }

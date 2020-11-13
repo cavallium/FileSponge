@@ -26,7 +26,7 @@ import org.warp.filesponge.value.MirrorURI;
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class BaseMirrorFileSource implements FileSource {
 
-	protected final ReceiverAvailabilityManager receiverAvailabilityManager;
+	protected final MirrorAvailabilityManager receiverAvailabilityManager;
 	protected final MirrorURI mirrorURI;
 
 }
