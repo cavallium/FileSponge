@@ -18,11 +18,30 @@
 
 package org.warp.filesponge;
 
+import java.util.HashSet;
+import java.util.Set;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import org.warp.filesponge.value.MirrorURI;
 
 @AllArgsConstructor(access = AccessLevel.PUBLIC)
 public class MirrorAvailabilityManager {
 
-	private final FileMirrorsManager fileMirrorsManager;
+	private final Set<MirrorURI> availableMirrors = new HashSet<>();
+
+	public synchronized void setAllMirrorsAsUnavailable() {
+		availableMirrors.clear();
+	}
+
+	public synchronized void setMirrorAvailability(MirrorURI mirrorURI, boolean available) {
+		if (available) {
+			availableMirrors.add(mirrorURI);
+		} else {
+			availableMirrors.remove(mirrorURI);
+		}
+	}
+
+	public synchronized boolean isMirrorAvailable(MirrorURI mirrorURI) {
+		return this.availableMirrors.contains(mirrorURI);
+	}
 }

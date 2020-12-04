@@ -18,7 +18,6 @@
 
 package org.warp.filesponge;
 
-import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
@@ -29,7 +28,7 @@ import org.warp.filesponge.value.MirrorURI;
 @AllArgsConstructor()
 public class FileMirrorsManager {
 
-	private final Set<MirrorURI> availableMirrors = new HashSet<>();
+	private final MirrorAvailabilityManager mirrorAvailabilityManager;
 
 	/**
 	 * This map must be persistent
@@ -40,12 +39,12 @@ public class FileMirrorsManager {
 		return fileMirrors
 				.getLinks(fileURI)
 				.stream()
-				.filter(this::isMirrorAvailable)
+				.filter(mirrorAvailabilityManager::isMirrorAvailable)
 				.collect(Collectors.toUnmodifiableSet());
 	}
 
-	public synchronized boolean hasAnyAvailableReceiver(FileURI uri) {
-		return fileMirrors.getLinks(uri).stream().anyMatch(this::isMirrorAvailable);
+	public synchronized boolean hasAnyAvailableMirror(FileURI uri) {
+		return fileMirrors.getLinks(uri).stream().anyMatch(mirrorAvailabilityManager::isMirrorAvailable);
 	}
 
 	public synchronized void addMirror(FileURI uri, MirrorURI mirrorURI) {
@@ -58,21 +57,5 @@ public class FileMirrorsManager {
 
 	public synchronized void unsetAllFiles() {
 		fileMirrors.clear();
-	}
-
-	public synchronized void setAllMirrorsAsUnavailable() {
-		availableMirrors.clear();
-	}
-
-	public synchronized void setReceiverAvailability(MirrorURI mirrorURI, boolean available) {
-		if (available) {
-			availableMirrors.add(mirrorURI);
-		} else {
-			availableMirrors.remove(mirrorURI);
-		}
-	}
-
-	public synchronized boolean isMirrorAvailable(MirrorURI mirrorURI) {
-		return this.availableMirrors.contains(mirrorURI);
 	}
 }
