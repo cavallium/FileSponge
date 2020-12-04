@@ -27,7 +27,7 @@ import org.warp.filesponge.value.FileURI;
 /**
  * FileSource receives responses from a mirror
  */
-public interface FileSource {
+public interface FileSource<FURI extends FileURI, FTYPE extends FileType> {
 
 	/**
 	 * Called when the mirror is online
@@ -42,14 +42,14 @@ public interface FileSource {
 	/**
 	 * Called when the mirror notifies you that a new file exists
 	 */
-	boolean onNewFile(@NotNull FileURI fileURI, @NotNull FileType fileType);
+	boolean onNewFile(@NotNull FURI fileURI, @NotNull FTYPE fileType);
 
 	/**
 	 * Called when the mirror notifies you details about a file.
 	 * <p>
 	 * {@link this#onNewFile(FileURI, FileType)} must have been already called
 	 */
-	void onFile(@NotNull FileURI fileURI, @NotNull FileSourceAvailability fileAvailability, long totalSize);
+	void onFile(@NotNull FURI fileURI, @NotNull FileSourceAvailability fileAvailability, long totalSize);
 
 	/**
 	 * Called when the mirror notifies you the bytes of a part of a file.
@@ -57,5 +57,5 @@ public interface FileSource {
 	 * {@link this#onNewFile(FileURI, FileType)} and {@link this#onFile(FileURI, FileSourceAvailability, long)} must
 	 * have been already called
 	 */
-	void onFilePiece(@NotNull FileURI fileURI, long offset, long size, @NotNull ByteBuffer piece);
+	void onFilePiece(@NotNull FURI fileURI, long offset, long size, @NotNull ByteBuffer piece);
 }

@@ -19,26 +19,25 @@
 package org.warp.filesponge.extra.api;
 
 import java.util.Optional;
-import java.util.OptionalLong;
 import org.warp.filesponge.value.FileURI;
 
 /**
  * Translate File URIs to "fileId" and back
  */
-public interface FileURITranslator {
+public interface FileURITranslator<FURI extends FileURI, FID> {
 
-	Optional<FileURI> getURI(long fileId);
+	Optional<FURI> getURI(FID fileId);
 
-	OptionalLong getFileId(FileURI fileURI);
+	Optional<FID> getFileId(FURI fileURI);
 
 	/**
 	 * @throws AlreadyAssignedException Throw if the uri has another fileId assigned
 	 */
-	void setFileId(FileURI fileURI, long fileId) throws AlreadyAssignedException;
+	void setFileId(FURI fileURI, FID fileId) throws AlreadyAssignedException;
 
-	Optional<FileURI> delete(long fileId);
+	Optional<FURI> delete(FID fileId);
 
-	OptionalLong delete(FileURI fileURI);
+	Optional<FID> delete(FURI fileURI);
 
 	void clear();
 }

@@ -19,7 +19,7 @@
 package org.warp.filesponge;
 
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import org.jetbrains.annotations.NotNull;
@@ -33,22 +33,22 @@ import org.warp.filesponge.value.FileURI;
  */
 @AllArgsConstructor
 @EqualsAndHashCode
-public class SecureFileAccessor implements FileAccessor {
+public class SecureFileAccessor<FURI extends FileURI, FC extends FileContent> implements FileAccessor<FURI, FC> {
 
-	private final FileAccessor fileAccessor;
+	private final FileAccessor<FURI, FC> fileAccessor;
 
 	@Override
-	public void delete(@NotNull FileURI fileURI) {
+	public void delete(@NotNull FURI fileURI) {
 		fileAccessor.delete(fileURI);
 	}
 
 	@Override
-	public CompletableFuture<Optional<FileContent>> getContent(@NotNull FileURI fileURI, boolean offlineOnly) {
+	public CompletionStage<Optional<FC>> getContent(@NotNull FURI fileURI, boolean offlineOnly) {
 		return fileAccessor.getContent(fileURI, offlineOnly);
 	}
 
 	@Override
-	public @NotNull FileStatus getStatus(@NotNull FileURI fileURI) {
+	public @NotNull FileStatus getStatus(@NotNull FURI fileURI) {
 		return fileAccessor.getStatus(fileURI);
 	}
 

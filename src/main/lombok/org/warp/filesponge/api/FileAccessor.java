@@ -19,7 +19,7 @@
 package org.warp.filesponge.api;
 
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import org.jetbrains.annotations.NotNull;
 import org.warp.filesponge.value.FileContent;
 import org.warp.filesponge.value.FileStatus;
@@ -28,14 +28,14 @@ import org.warp.filesponge.value.FileURI;
 /**
  * FileAccessor can be used to access files from the client side
  */
-public interface FileAccessor {
+public interface FileAccessor<FURI extends FileURI, FC extends FileContent> {
 
 	/**
 	 * Request file deletion
 	 *
 	 * @param fileURI File URI
 	 */
-	void delete(@NotNull FileURI fileURI);
+	void delete(@NotNull FURI fileURI);
 
 	/**
 	 * Get file content
@@ -44,7 +44,7 @@ public interface FileAccessor {
 	 * @param offlineOnly true to get the file from cache
 	 * @return content if found. If the request is offline the future will complete instantly
 	 */
-	CompletableFuture<Optional<FileContent>> getContent(@NotNull FileURI fileURI, boolean offlineOnly);
+	CompletionStage<Optional<FC>> getContent(@NotNull FURI fileURI, boolean offlineOnly);
 
 	/**
 	 * Get file status
@@ -52,5 +52,5 @@ public interface FileAccessor {
 	 * @param fileURI File URI
 	 * @return status of this file
 	 */
-	@NotNull FileStatus getStatus(@NotNull FileURI fileURI);
+	@NotNull FileStatus getStatus(@NotNull FURI fileURI);
 }

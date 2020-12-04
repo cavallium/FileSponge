@@ -18,23 +18,15 @@
 
 package org.warp.filesponge.api;
 
-import org.warp.filesponge.SecureFileAccessor;
+import org.jetbrains.annotations.NotNull;
 import org.warp.filesponge.value.FileContent;
+import org.warp.filesponge.value.FileType;
 import org.warp.filesponge.value.FileURI;
+import org.warp.filesponge.value.MirrorURI;
 
-/**
- * FileAccessor can be used to manage FileSponge and access files from the client side
- */
-public interface FileSpongeClient<FURI extends FileURI, FC extends FileContent> extends FileAccessor<FURI, FC> {
+public interface FileStorage<FURI extends FileURI, FTYPE extends FileType, MURI extends MirrorURI, FC extends FileContent> {
 
-	void optimizeStorage();
+	void newFile(@NotNull FURI fileURI, @NotNull FTYPE fileType);
 
-	/**
-	 * Get this instance but without special methods
-	 *
-	 * @return limited instance of itself
-	 */
-	default FileAccessor<FURI, FC> asFileAccessor() {
-		return new SecureFileAccessor<>(this);
-	}
+	FC readFileData(@NotNull FURI fileURI);
 }

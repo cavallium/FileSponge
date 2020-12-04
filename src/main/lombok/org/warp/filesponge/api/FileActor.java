@@ -25,7 +25,7 @@ import org.warp.filesponge.value.FileURI;
 /**
  * FileActor sends signals to a mirror
  */
-public interface FileActor {
+public interface FileActor<FURI extends FileURI> {
 
 	/**
 	 * Send a "delete file" signal
@@ -33,7 +33,7 @@ public interface FileActor {
 	 * @param fileURI File URI
 	 * @return true if the signal can be sent
 	 */
-	boolean deleteFile(FileURI fileURI);
+	boolean deleteFile(FURI fileURI);
 
 	/**
 	 * Send a "download file" signal
@@ -41,7 +41,7 @@ public interface FileActor {
 	 * @param fileURI File URI
 	 * @return true if the signal can be sent
 	 */
-	boolean downloadFile(FileURI fileURI);
+	boolean downloadFile(FURI fileURI);
 
 	/**
 	 * Check if this actor can handle signals for this file
@@ -49,7 +49,7 @@ public interface FileActor {
 	 * @param fileURI File URI
 	 * @return true if the actor can send signals related to this file
 	 */
-	boolean canHandleFile(FileURI fileURI);
+	boolean canHandleFile(FURI fileURI);
 
 	/**
 	 * Send a "download file" signal

@@ -23,17 +23,17 @@ import org.warp.filesponge.value.FileURI;
 /**
  * Create an unique "fileId" for each File URI
  */
-public interface URIObfuscator {
+public interface URIObfuscator<FURI extends FileURI, FID> {
 
-	FileURI deobfuscateFileId(long fileId);
+	FURI deobfuscateFileId(FID fileId);
 
-	void getFileId(FileURI fileURI);
+	void getFileId(FURI fileURI);
 
-	void setURIValue(FileURI fileURI, long fileId);
+	void setURIValue(FURI fileURI, FID fileId);
 
-	FileURI delete(long fileId);
+	FURI delete(FID fileId);
 
-	long delete(FileURI fileURI);
+	FID delete(FURI fileURI);
 
 	void clear();
 }
