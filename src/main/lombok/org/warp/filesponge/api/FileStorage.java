@@ -18,6 +18,7 @@
 
 package org.warp.filesponge.api;
 
+import java.nio.ByteBuffer;
 import org.jetbrains.annotations.NotNull;
 import org.warp.filesponge.value.FileContent;
 import org.warp.filesponge.value.FileType;
@@ -29,4 +30,8 @@ public interface FileStorage<FURI extends FileURI, FTYPE extends FileType, MURI 
 	void newFile(@NotNull FURI fileURI, @NotNull FTYPE fileType);
 
 	FC readFileData(@NotNull FURI fileURI);
+
+	void setFileData(@NotNull FURI fileURI, long offset, long size, ByteBuffer bytes, long totalSize);
+
+	boolean hasAllData(@NotNull FURI fileURI);
 }
