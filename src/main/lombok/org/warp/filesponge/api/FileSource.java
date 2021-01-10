@@ -47,14 +47,14 @@ public interface FileSource<FURI extends FileURI, FTYPE extends FileType> {
 	/**
 	 * Called when the mirror notifies you details about a file.
 	 * <p>
-	 * {@link this#onNewFile(FileURI, FileType)} must have been already called
+	 * {@link FileSource#onNewFile(FURI, FTYPE)} must have been already called
 	 */
 	void onFile(@NotNull FURI fileURI, @NotNull FileSourceAvailability fileAvailability, long totalSize);
 
 	/**
 	 * Called when the mirror notifies you the bytes of a part of a file.
 	 * <p>
-	 * {@link this#onNewFile(FileURI, FileType)} and {@link this#onFile(FileURI, FileSourceAvailability, long)} must
+	 * {@link FileSource#onNewFile(FURI, FTYPE)} and {@link FileSource#onFile(FURI, FileSourceAvailability, long)} must
 	 * have been already called
 	 */
 	void onFilePiece(@NotNull FURI fileURI, long offset, long size, @NotNull ByteBuffer piece);
