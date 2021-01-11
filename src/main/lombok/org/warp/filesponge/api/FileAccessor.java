@@ -18,8 +18,8 @@
 
 package org.warp.filesponge.api;
 
+import java.nio.ByteBuffer;
 import org.jetbrains.annotations.NotNull;
-import org.warp.filesponge.value.FileContent;
 import org.warp.filesponge.value.FileStatus;
 import org.warp.filesponge.value.FileURI;
 import reactor.core.publisher.Mono;
@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono;
 /**
  * FileAccessor can be used to access files from the client side
  */
-public interface FileAccessor<FURI extends FileURI, FC extends FileContent> {
+public interface FileAccessor<FURI extends FileURI> {
 
 	/**
 	 * Request file deletion
@@ -45,7 +45,7 @@ public interface FileAccessor<FURI extends FileURI, FC extends FileContent> {
 	 * @return content if found. If the request is offline the future will complete instantly.
 	 * Can be empty
 	 */
-	Mono<FC> getContent(@NotNull FURI fileURI, boolean offlineOnly);
+	Mono<ByteBuffer> getContent(@NotNull FURI fileURI, boolean offlineOnly);
 
 	/**
 	 * Get file status

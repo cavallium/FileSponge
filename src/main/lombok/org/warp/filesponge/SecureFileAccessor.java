@@ -18,11 +18,11 @@
 
 package org.warp.filesponge;
 
+import java.nio.ByteBuffer;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import org.jetbrains.annotations.NotNull;
 import org.warp.filesponge.api.FileAccessor;
-import org.warp.filesponge.value.FileContent;
 import org.warp.filesponge.value.FileStatus;
 import org.warp.filesponge.value.FileURI;
 import reactor.core.publisher.Mono;
@@ -32,9 +32,9 @@ import reactor.core.publisher.Mono;
  */
 @AllArgsConstructor
 @EqualsAndHashCode
-public class SecureFileAccessor<FURI extends FileURI, FC extends FileContent> implements FileAccessor<FURI, FC> {
+public class SecureFileAccessor<FURI extends FileURI> implements FileAccessor<FURI> {
 
-	private final FileAccessor<FURI, FC> fileAccessor;
+	private final FileAccessor<FURI> fileAccessor;
 
 	@Override
 	public Mono<Void> delete(@NotNull FURI fileURI) {
@@ -42,7 +42,7 @@ public class SecureFileAccessor<FURI extends FileURI, FC extends FileContent> im
 	}
 
 	@Override
-	public Mono<FC> getContent(@NotNull FURI fileURI, boolean offlineOnly) {
+	public Mono<ByteBuffer> getContent(@NotNull FURI fileURI, boolean offlineOnly) {
 		return fileAccessor.getContent(fileURI, offlineOnly);
 	}
 

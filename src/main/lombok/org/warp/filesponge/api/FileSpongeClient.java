@@ -19,14 +19,13 @@
 package org.warp.filesponge.api;
 
 import org.warp.filesponge.SecureFileAccessor;
-import org.warp.filesponge.value.FileContent;
 import org.warp.filesponge.value.FileURI;
 import reactor.core.publisher.Mono;
 
 /**
  * FileAccessor can be used to manage FileSponge and access files from the client side
  */
-public interface FileSpongeClient<FURI extends FileURI, FC extends FileContent> extends FileAccessor<FURI, FC> {
+public interface FileSpongeClient<FURI extends FileURI> extends FileAccessor<FURI> {
 
 	Mono<Void> optimizeStorage();
 
@@ -35,7 +34,7 @@ public interface FileSpongeClient<FURI extends FileURI, FC extends FileContent> 
 	 *
 	 * @return limited instance of itself
 	 */
-	default FileAccessor<FURI, FC> asFileAccessor() {
+	default FileAccessor<FURI> asFileAccessor() {
 		return new SecureFileAccessor<>(this);
 	}
 }

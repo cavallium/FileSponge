@@ -20,19 +20,38 @@ package org.warp.filesponge.api;
 
 import java.nio.ByteBuffer;
 import org.jetbrains.annotations.NotNull;
-import org.warp.filesponge.value.FileContent;
+import org.jetbrains.annotations.Nullable;
 import org.warp.filesponge.value.FileType;
 import org.warp.filesponge.value.FileURI;
 import org.warp.filesponge.value.MirrorURI;
 import reactor.core.publisher.Mono;
 
-public interface FileStorage<FURI extends FileURI, FTYPE extends FileType, MURI extends MirrorURI, FC extends FileContent> {
+public interface FileStorage<FURI extends FileURI, FTYPE extends FileType, MURI extends MirrorURI> {
 
 	Mono<Void> newFile(@NotNull FURI fileURI, @NotNull FTYPE fileType);
 
-	Mono<FC> readFileData(@NotNull FURI fileURI);
+	Mono<ByteBuffer> readFileData(@NotNull FURI fileURI);
 
-	Mono<Void> setFileData(@NotNull FURI fileURI, long offset, long size, ByteBuffer bytes, long totalSize);
+	/**
+	 * Set a part of file data.
+	 * If file size is 0, the file will be deleted.
+	 * @param fileURI File URI
+	 * @param offset offset of the current data segment
+	 * @param size current data segment size
+	 * @param bytes data segment, can be null if totalSize is 0
+	 * @param totalSize total file size
+	 * @return nothing
+	 */
+	Mono<Void> setFileData(@NotNull FURI fileURI, long offset, long size, @Nullable ByteBuffer bytes, long totalSize);
 
 	Mono<Boolean> hasAllData(@NotNull FURI fileURI);
+
+	/**
+	 * Delete a file
+	 * @param fileURI
+	 * @return
+	 */
+	default Mono<Void> deleteFile(@NotNull FURI fileURI) {
+		return setFileData(fileURI, 0, 0, null, 0);
+	}
 }
