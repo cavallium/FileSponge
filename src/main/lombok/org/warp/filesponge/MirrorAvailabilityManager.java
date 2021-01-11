@@ -18,30 +18,40 @@
 
 package org.warp.filesponge;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.warp.filesponge.value.MirrorURI;
+import reactor.core.publisher.Mono;
 
 @AllArgsConstructor(access = AccessLevel.PUBLIC)
 public class MirrorAvailabilityManager {
 
-	private final Set<MirrorURI> availableMirrors = new HashSet<>();
+	private static final Object NO_VALUE = new Object();
+	/**
+	 * This is a set. the value is not important
+	 */
+	private final ConcurrentHashMap<MirrorURI, Object> availableMirrors = new ConcurrentHashMap<>();
 
-	public synchronized void setAllMirrorsAsUnavailable() {
-		availableMirrors.clear();
+	public Mono<Void> setAllMirrorsAsUnavailable() {
+		return Mono.fromCallable(() -> {
+			availableMirrors.clear();
+			return null;
+		});
 	}
 
-	public synchronized void setMirrorAvailability(MirrorURI mirrorURI, boolean available) {
-		if (available) {
-			availableMirrors.add(mirrorURI);
-		} else {
-			availableMirrors.remove(mirrorURI);
-		}
+	public Mono<Void> setMirrorAvailability(MirrorURI mirrorURI, boolean available) {
+		return Mono.fromCallable(() -> {
+			if (available) {
+				availableMirrors.put(mirrorURI, NO_VALUE);
+			} else {
+				availableMirrors.remove(mirrorURI);
+			}
+			return null;
+		});
 	}
 
-	public synchronized boolean isMirrorAvailable(MirrorURI mirrorURI) {
-		return this.availableMirrors.contains(mirrorURI);
+	public Mono<Boolean> isMirrorAvailable(MirrorURI mirrorURI) {
+		return Mono.fromCallable(() -> this.availableMirrors.contains(mirrorURI));
 	}
 }

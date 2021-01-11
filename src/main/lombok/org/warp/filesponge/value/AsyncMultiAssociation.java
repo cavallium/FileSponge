@@ -1,6 +1,6 @@
 /*
  *     FileSponge
- *     Copyright (C) 2020 Andrea Cavalli
+ *     Copyright (C) 2021 Andrea Cavalli
  *
  *     This program is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -16,26 +16,40 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.warp.filesponge.api;
+package org.warp.filesponge.value;
 
-import org.warp.filesponge.SecureFileAccessor;
-import org.warp.filesponge.value.FileContent;
-import org.warp.filesponge.value.FileURI;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-/**
- * FileAccessor can be used to manage FileSponge and access files from the client side
- */
-public interface FileSpongeClient<FURI extends FileURI, FC extends FileContent> extends FileAccessor<FURI, FC> {
+public interface AsyncMultiAssociation<T, U> {
 
-	Mono<Void> optimizeStorage();
+	Mono<Boolean> link(T var1, U var2);
 
-	/**
-	 * Get this instance but without special methods
-	 *
-	 * @return limited instance of itself
-	 */
-	default FileAccessor<FURI, FC> asFileAccessor() {
-		return new SecureFileAccessor<>(this);
+	Mono<Boolean> unlink(T var1, U var2);
+
+	Flux<U> unlink(T var1);
+
+	Flux<T> unlinkFromSource(U var1);
+
+	default Mono<Boolean> hasAnyLink(T src) {
+		return this.getLinks(src).hasElements();
 	}
+
+	default Mono<Boolean> hasAnyLinkSource(U dest) {
+		return this.getLinkSources(dest).hasElements();
+	}
+
+	Mono<Boolean> hasLink(T var1, U var2);
+
+	Flux<U> getLinks(T var1);
+
+	Flux<T> getLinkSources(U var1);
+
+	Mono<Void> clear();
+
+	Mono<Integer> size();
+
+	Flux<T> getSources();
+
+	Flux<U> getDestinations();
 }

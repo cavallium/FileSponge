@@ -21,41 +21,57 @@ package org.warp.filesponge;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
-import org.warp.commonutils.type.MultiAssociation;
+import org.warp.filesponge.value.AsyncMultiAssociation;
 import org.warp.filesponge.value.FileURI;
 import org.warp.filesponge.value.MirrorURI;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 @AllArgsConstructor()
 public class FileMirrorsManager {
+
+	private final Scheduler fileMirrorsManagerScheduler = Schedulers.single();
 
 	private final MirrorAvailabilityManager mirrorAvailabilityManager;
 
 	/**
 	 * This map must be persistent
 	 */
-	private final MultiAssociation<FileURI, MirrorURI> fileMirrors;
+	private final AsyncMultiAssociation<FileURI, MirrorURI> fileMirrors;
 
-	public synchronized Set<MirrorURI> getAvailableMirrors(FileURI fileURI) {
+	public Mono<Set<MirrorURI>> getAvailableMirrors(FileURI fileURI) {
 		return fileMirrors
 				.getLinks(fileURI)
-				.stream()
-				.filter(mirrorAvailabilityManager::isMirrorAvailable)
-				.collect(Collectors.toUnmodifiableSet());
+				.filterWhen(mirrorAvailabilityManager::isMirrorAvailable)
+				.collect(Collectors.toUnmodifiableSet())
+				.subscribeOn(fileMirrorsManagerScheduler);
 	}
 
-	public synchronized boolean hasAnyAvailableMirror(FileURI uri) {
-		return fileMirrors.getLinks(uri).stream().anyMatch(mirrorAvailabilityManager::isMirrorAvailable);
+	public Mono<Boolean> hasAnyAvailableMirror(FileURI uri) {
+		return fileMirrors
+				.getLinks(uri)
+				.filterWhen(mirrorAvailabilityManager::isMirrorAvailable)
+				.hasElements()
+				.subscribeOn(fileMirrorsManagerScheduler);
 	}
 
-	public synchronized void addMirror(FileURI uri, MirrorURI mirrorURI) {
-		fileMirrors.link(uri, mirrorURI);
+	public Mono<Void> addMirror(FileURI uri, MirrorURI mirrorURI) {
+		return fileMirrors
+				.link(uri, mirrorURI)
+				.then()
+				.subscribeOn(fileMirrorsManagerScheduler);
 	}
 
-	public synchronized void removeMirror(FileURI uri, MirrorURI mirrorURI) {
-		fileMirrors.unlink(uri, mirrorURI);
+	public Mono<Void> removeMirror(FileURI uri, MirrorURI mirrorURI) {
+		return fileMirrors
+				.unlink(uri, mirrorURI)
+				.then()
+				.subscribeOn(fileMirrorsManagerScheduler);
 	}
 
-	public synchronized void unsetAllFiles() {
-		fileMirrors.clear();
+	public Mono<Void> unsetAllFiles() {
+		return fileMirrors.clear()
+				.subscribeOn(fileMirrorsManagerScheduler);
 	}
 }

@@ -56,11 +56,22 @@
       <artifactId>common-utils</artifactId>
       <version>1.1.1</version>
     </dependency>
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-core</artifactId>
+      <version>3.4.1</version>
+    </dependency>
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-test</artifactId>
+      <version>3.4.1</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
     <sourceDirectory>src/main/lombok</sourceDirectory>
-    <testSourceDirectory>src/main/lombok</testSourceDirectory>
+    <testSourceDirectory>src/test/lombok</testSourceDirectory>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

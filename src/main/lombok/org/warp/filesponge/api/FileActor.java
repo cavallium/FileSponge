@@ -19,8 +19,8 @@
 package org.warp.filesponge.api;
 
 import java.time.Duration;
-import java.util.Optional;
 import org.warp.filesponge.value.FileURI;
+import reactor.core.publisher.Mono;
 
 /**
  * FileActor sends signals to a mirror
@@ -31,25 +31,25 @@ public interface FileActor<FURI extends FileURI> {
 	 * Send a "delete file" signal
 	 *
 	 * @param fileURI File URI
-	 * @return true if the signal can be sent
+	 * @return true if the signal can be sent. Cannot be empty.
 	 */
-	boolean deleteFile(FURI fileURI);
+	Mono<Boolean> deleteFile(FURI fileURI);
 
 	/**
 	 * Send a "download file" signal
 	 *
 	 * @param fileURI File URI
-	 * @return true if the signal can be sent
+	 * @return true if the signal can be sent. Cannot be empty.
 	 */
-	boolean downloadFile(FURI fileURI);
+	Mono<Boolean> downloadFile(FURI fileURI);
 
 	/**
 	 * Check if this actor can handle signals for this file
 	 *
 	 * @param fileURI File URI
-	 * @return true if the actor can send signals related to this file
+	 * @return true if the actor can send signals related to this file. Cannot be empty.
 	 */
-	boolean canHandleFile(FURI fileURI);
+	Mono<Boolean> canHandleFile(FURI fileURI);
 
 	/**
 	 * Send a "download file" signal
@@ -59,7 +59,7 @@ public interface FileActor<FURI extends FileURI> {
 	 * @return empty if no pending <b>download requests</b> has been found, true if the signal can be sent, false
 	 * otherwise
 	 */
-	Optional<Boolean> downloadNextFile(Duration timeout);
+	Mono<Boolean> downloadNextFile(Duration timeout);
 
 	/**
 	 * Send a "delete file" signal
@@ -68,5 +68,5 @@ public interface FileActor<FURI extends FileURI> {
 	 *                <b>delete request</b> has been found, or the timeout time elapsed
 	 * @return empty if no pending <b>delete requests</b> has been found, true if the signal can be sent, false otherwise
 	 */
-	Optional<Boolean> deleteNextFile(Duration timeout);
+	Mono<Boolean> deleteNextFile(Duration timeout);
 }

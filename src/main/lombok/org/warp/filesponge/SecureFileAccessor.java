@@ -18,8 +18,6 @@
 
 package org.warp.filesponge;
 
-import java.util.Optional;
-import java.util.concurrent.CompletionStage;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import org.jetbrains.annotations.NotNull;
@@ -27,6 +25,7 @@ import org.warp.filesponge.api.FileAccessor;
 import org.warp.filesponge.value.FileContent;
 import org.warp.filesponge.value.FileStatus;
 import org.warp.filesponge.value.FileURI;
+import reactor.core.publisher.Mono;
 
 /**
  * Prevent access to other methods via casting
@@ -38,17 +37,17 @@ public class SecureFileAccessor<FURI extends FileURI, FC extends FileContent> im
 	private final FileAccessor<FURI, FC> fileAccessor;
 
 	@Override
-	public void delete(@NotNull FURI fileURI) {
-		fileAccessor.delete(fileURI);
+	public Mono<Void> delete(@NotNull FURI fileURI) {
+		return fileAccessor.delete(fileURI);
 	}
 
 	@Override
-	public CompletionStage<Optional<FC>> getContent(@NotNull FURI fileURI, boolean offlineOnly) {
+	public Mono<FC> getContent(@NotNull FURI fileURI, boolean offlineOnly) {
 		return fileAccessor.getContent(fileURI, offlineOnly);
 	}
 
 	@Override
-	public @NotNull FileStatus getStatus(@NotNull FURI fileURI) {
+	public @NotNull Mono<FileStatus> getStatus(@NotNull FURI fileURI) {
 		return fileAccessor.getStatus(fileURI);
 	}
 

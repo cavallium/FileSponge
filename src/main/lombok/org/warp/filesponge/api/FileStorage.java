@@ -24,14 +24,15 @@ import org.warp.filesponge.value.FileContent;
 import org.warp.filesponge.value.FileType;
 import org.warp.filesponge.value.FileURI;
 import org.warp.filesponge.value.MirrorURI;
+import reactor.core.publisher.Mono;
 
 public interface FileStorage<FURI extends FileURI, FTYPE extends FileType, MURI extends MirrorURI, FC extends FileContent> {
 
-	void newFile(@NotNull FURI fileURI, @NotNull FTYPE fileType);
+	Mono<Void> newFile(@NotNull FURI fileURI, @NotNull FTYPE fileType);
 
-	FC readFileData(@NotNull FURI fileURI);
+	Mono<FC> readFileData(@NotNull FURI fileURI);
 
-	void setFileData(@NotNull FURI fileURI, long offset, long size, ByteBuffer bytes, long totalSize);
+	Mono<Void> setFileData(@NotNull FURI fileURI, long offset, long size, ByteBuffer bytes, long totalSize);
 
-	boolean hasAllData(@NotNull FURI fileURI);
+	Mono<Boolean> hasAllData(@NotNull FURI fileURI);
 }

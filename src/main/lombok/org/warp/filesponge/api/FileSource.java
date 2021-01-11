@@ -23,6 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import org.warp.filesponge.value.FileSourceAvailability;
 import org.warp.filesponge.value.FileType;
 import org.warp.filesponge.value.FileURI;
+import reactor.core.publisher.Mono;
 
 /**
  * FileSource receives responses from a mirror
@@ -32,24 +33,24 @@ public interface FileSource<FURI extends FileURI, FTYPE extends FileType> {
 	/**
 	 * Called when the mirror is online
 	 */
-	void onAvailable();
+	Mono<Void> onAvailable();
 
 	/**
 	 * Called when the mirror is unreachable
 	 */
-	void onUnavailable();
+	Mono<Void> onUnavailable();
 
 	/**
-	 * Called when the mirror notifies you that a new file exists
+	 * Called when the mirror notifies you that a new file exists. Cannot be empty.
 	 */
-	boolean onNewFile(@NotNull FURI fileURI, @NotNull FTYPE fileType);
+	Mono<Boolean> onNewFile(@NotNull FURI fileURI, @NotNull FTYPE fileType);
 
 	/**
 	 * Called when the mirror notifies you details about a file.
 	 * <p>
 	 * {@link FileSource#onNewFile(FURI, FTYPE)} must have been already called
 	 */
-	void onFile(@NotNull FURI fileURI, @NotNull FileSourceAvailability fileAvailability, long totalSize);
+	Mono<Void> onFile(@NotNull FURI fileURI, @NotNull FileSourceAvailability fileAvailability, long totalSize);
 
 	/**
 	 * Called when the mirror notifies you the bytes of a part of a file.
@@ -57,5 +58,5 @@ public interface FileSource<FURI extends FileURI, FTYPE extends FileType> {
 	 * {@link FileSource#onNewFile(FURI, FTYPE)} and {@link FileSource#onFile(FURI, FileSourceAvailability, long)} must
 	 * have been already called
 	 */
-	void onFilePiece(@NotNull FURI fileURI, long offset, long size, @NotNull ByteBuffer piece);
+	Mono<Void> onFilePiece(@NotNull FURI fileURI, long offset, long size, @NotNull ByteBuffer piece);
 }
