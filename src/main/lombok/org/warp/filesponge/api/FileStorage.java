@@ -30,7 +30,26 @@ public interface FileStorage<FURI extends FileURI, FTYPE extends FileType, MURI 
 
 	Mono<Void> newFile(@NotNull FURI fileURI, @NotNull FTYPE fileType);
 
+	/**
+	 * Read file data.
+	 * Fails if not all the file data is available.
+	 * @param fileURI File URI
+	 * @return read-only file data
+	 * @throws java.util.NoSuchElementException if file is not existing, or some requested data is missing
+	 */
 	Mono<ByteBuffer> readFileData(@NotNull FURI fileURI);
+
+	/**
+	 * Read a part of file data.
+	 * Fails if not all the requested file data is available.
+	 * @param fileURI File URI
+	 * @param offset offset of the current data segment
+	 * @param size current data segment size
+	 * @return read-only file data part
+	 * @throws java.util.NoSuchElementException if file is not existing, or some requested data is missing
+	 * @throws org.warp.commonutils.error.IndexOutOfBoundsException if requested offset or size is not valid
+	 */
+	Mono<ByteBuffer> readFileDataPart(@NotNull FURI fileURI, long offset, long size);
 
 	/**
 	 * Set a part of file data.
