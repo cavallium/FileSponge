@@ -21,7 +21,7 @@ package org.warp.filesponge;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
-import org.warp.filesponge.value.AsyncMultiAssociation;
+import org.warp.filesponge.reactor.AsyncMultiAssociation;
 import org.warp.filesponge.value.FileURI;
 import org.warp.filesponge.value.MirrorURI;
 import reactor.core.publisher.Mono;

@@ -16,7 +16,7 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.warp.filesponge.value;
+package org.warp.filesponge.reactor;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
