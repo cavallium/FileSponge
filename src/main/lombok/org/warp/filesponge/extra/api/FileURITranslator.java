@@ -19,6 +19,7 @@
 package org.warp.filesponge.extra.api;
 
 import java.util.Optional;
+import org.warp.filesponge.value.AlreadyAssignedException;
 import org.warp.filesponge.value.FileURI;
 
 /**
