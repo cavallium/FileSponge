@@ -67,8 +67,8 @@ public interface FileStorage<FURI extends FileURI, FTYPE extends FileType, MURI 
 
 	/**
 	 * Delete a file
-	 * @param fileURI
-	 * @return
+	 * @param fileURI File URI
+	 * @return nothing
 	 */
 	default Mono<Void> deleteFile(@NotNull FURI fileURI) {
 		return setFileData(fileURI, 0, 0, null, 0);
