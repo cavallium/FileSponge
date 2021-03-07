@@ -16,23 +16,35 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.warp.filesponge.value;
+package org.warp.filesponge;
 
-public class AlreadyAssignedException extends Exception {
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
-	public AlreadyAssignedException() {
-		super();
+public interface URLsHandler {
+
+	Flux<DataBlock> requestContent(URL url);
+
+	Mono<Metadata> requestMetadata(URL url);
+
+	default Mono<Tuple2<Metadata, Flux<DataBlock>>> request(URL url) {
+		return requestMetadata(url).map(metadata -> Tuples.of(metadata, requestContent(url)));
 	}
 
-	public AlreadyAssignedException(String message) {
-		super(message);
+	default URLHandler asURLHandler(URL url) {
+		return new URLHandler() {
+			@Override
+			public Flux<DataBlock> requestContent() {
+				return URLsHandler.this.requestContent(url);
+			}
+
+			@Override
+			public Mono<Metadata> requestMetadata() {
+				return URLsHandler.this.requestMetadata(url);
+			}
+		};
 	}
 
-	public AlreadyAssignedException(String message, Throwable cause) {
-		super(message, cause);
-	}
-
-	public AlreadyAssignedException(Throwable cause) {
-		super(cause);
-	}
 }

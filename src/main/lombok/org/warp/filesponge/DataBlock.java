@@ -1,6 +1,6 @@
 /*
  *     FileSponge
- *     Copyright (C) 2020 Andrea Cavalli
+ *     Copyright (C) 2021 Andrea Cavalli
  *
  *     This program is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,20 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/**
- * Extra functionalities and utilities for FileSponge
- */
-package org.warp.filesponge.extra;
+package org.warp.filesponge;
+
+import java.nio.ByteBuffer;
+import lombok.Value;
+
+@Value
+public class DataBlock {
+
+	int offset;
+	int length;
+	ByteBuffer data;
+
+
+	public int getId() {
+		return offset / Web.BLOCK_SIZE;
+	}
+}

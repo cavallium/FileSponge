@@ -1,6 +1,6 @@
 /*
  *     FileSponge
- *     Copyright (C) 2020 Andrea Cavalli
+ *     Copyright (C) 2021 Andrea Cavalli
  *
  *     This program is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,14 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.warp.filesponge.value;
+package org.warp.filesponge;
 
-public interface FileURI {}
+import reactor.core.publisher.Mono;
+
+public interface URLWriter {
+
+	Mono<Void> writeMetadata(Metadata metadata);
+
+	Mono<Void> writeContentBlock(DataBlock dataBlock);
+
+}

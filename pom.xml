@@ -34,6 +34,19 @@
     <maven.compiler.>11</maven.compiler.>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>mchv-release</id>
+      <name>MCHV Release Apache Maven Packages</name>
+      <url>https://mvn.mchv.eu/repository/mchv</url>
+    </repository>
+    <repository>
+      <id>mchv-snapshot</id>
+      <name>MCHV Snapshot Apache Maven Packages</name>
+      <url>https://mvn.mchv.eu/repository/mchv-snapshot</url>
+    </repository>
+  </repositories>
+
   <dependencies>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -66,6 +79,11 @@
       <artifactId>reactor-test</artifactId>
       <version>3.4.2</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>it.cavallium</groupId>
+      <artifactId>dbengine</artifactId>
+      <version>3.0.0-SNAPSHOT</version>
     </dependency>
   </dependencies>
 

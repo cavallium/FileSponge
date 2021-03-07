@@ -1,6 +1,6 @@
 /*
  *     FileSponge
- *     Copyright (C) 2020 Andrea Cavalli
+ *     Copyright (C) 2021 Andrea Cavalli
  *
  *     This program is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,32 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.warp.filesponge.value;
+package org.warp.filesponge;
 
-public interface MirrorURI {}
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+public interface URLsDiskHandler extends URLsHandler {
+
+	Mono<DiskMetadata> requestDiskMetadata(URL url);
+
+	default URLDiskHandler asURLDiskHandler(URL url) {
+		return new URLDiskHandler() {
+			@Override
+			public Mono<DiskMetadata> requestDiskMetadata() {
+				return URLsDiskHandler.this.requestDiskMetadata(url);
+			}
+
+			@Override
+			public Flux<DataBlock> requestContent() {
+				return URLsDiskHandler.this.requestContent(url);
+			}
+
+			@Override
+			public Mono<Metadata> requestMetadata() {
+				return URLsDiskHandler.this.requestMetadata(url);
+			}
+		};
+	}
+
+}

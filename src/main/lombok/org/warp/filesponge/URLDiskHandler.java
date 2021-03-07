@@ -1,6 +1,6 @@
 /*
  *     FileSponge
- *     Copyright (C) 2020 Andrea Cavalli
+ *     Copyright (C) 2021 Andrea Cavalli
  *
  *     This program is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -16,25 +16,12 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.warp.filesponge.value;
+package org.warp.filesponge;
 
-import java.util.Optional;
-import lombok.Value;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import reactor.core.publisher.Mono;
 
-@Value
-public class FileStatus {
-	@NotNull FileAvailability availability;
-	@NotNull FileDataAvailability dataAvailability;
-	@Nullable Integer totalSize;
-	@Nullable Integer downloadedSize;
+public interface URLDiskHandler extends URLHandler {
 
-	public Optional<Integer> getTotalSize() {
-		return Optional.ofNullable(totalSize);
-	}
+	Mono<DiskMetadata> requestDiskMetadata();
 
-	public Optional<Integer> getDownloadedSize() {
-		return Optional.ofNullable(downloadedSize);
-	}
 }

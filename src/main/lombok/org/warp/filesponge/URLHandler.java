@@ -1,6 +1,6 @@
 /*
  *     FileSponge
- *     Copyright (C) 2020 Andrea Cavalli
+ *     Copyright (C) 2021 Andrea Cavalli
  *
  *     This program is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,18 +18,19 @@
 
 package org.warp.filesponge;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import org.warp.filesponge.api.FileSource;
-import org.warp.filesponge.value.FileType;
-import org.warp.filesponge.value.FileURI;
-import org.warp.filesponge.value.MirrorURI;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-public abstract class BaseMirrorFileSource<FURI extends FileURI, FTYPE extends FileType> implements
-		FileSource<FURI, FTYPE> {
+public interface URLHandler {
 
-	protected final MirrorAvailabilityManager receiverAvailabilityManager;
-	protected final MirrorURI mirrorURI;
+	Flux<DataBlock> requestContent();
+
+	Mono<Metadata> requestMetadata();
+
+	default Mono<Tuple2<Metadata, Flux<DataBlock>>> request() {
+		return requestMetadata().map(metadata -> Tuples.of(metadata, requestContent()));
+	}
 
 }

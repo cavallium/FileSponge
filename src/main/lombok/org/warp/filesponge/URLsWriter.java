@@ -16,40 +16,28 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.warp.filesponge.reactor;
+package org.warp.filesponge;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public interface AsyncMultiAssociation<T, U> {
+public interface URLsWriter {
 
-	Mono<Boolean> link(T var1, U var2);
+	Mono<Void> writeMetadata(URL url, Metadata metadata);
 
-	Mono<Boolean> unlink(T var1, U var2);
+	Mono<Void> writeContentBlock(URL url, DataBlock dataBlock);
 
-	Flux<U> unlink(T var1);
+	default URLWriter getUrlWriter(URL url) {
+		return new URLWriter() {
+			@Override
+			public Mono<Void> writeMetadata(Metadata metadata) {
+				return URLsWriter.this.writeMetadata(url, metadata);
+			}
 
-	Flux<T> unlinkFromSource(U var1);
-
-	default Mono<Boolean> hasAnyLink(T src) {
-		return this.getLinks(src).hasElements();
+			@Override
+			public Mono<Void> writeContentBlock(DataBlock dataBlock) {
+				return URLsWriter.this.writeContentBlock(url, dataBlock);
+			}
+		};
 	}
 
-	default Mono<Boolean> hasAnyLinkSource(U dest) {
-		return this.getLinkSources(dest).hasElements();
-	}
-
-	Mono<Boolean> hasLink(T var1, U var2);
-
-	Flux<U> getLinks(T var1);
-
-	Flux<T> getLinkSources(U var1);
-
-	Mono<Void> clear();
-
-	Mono<Integer> size();
-
-	Flux<T> getSources();
-
-	Flux<U> getDestinations();
 }
