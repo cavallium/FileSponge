@@ -51,7 +51,7 @@ public class DiskMetadata {
 	}
 
 	private int getBlocksCount() {
-		var expectedBlocksCount = getBlocksCount(size, Web.BLOCK_SIZE);
+		var expectedBlocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
 		if (this.getDownloadedBlocks().size() != expectedBlocksCount) {
 			throw new IllegalStateException("Blocks array length != expected blocks count");
 		}
@@ -74,7 +74,7 @@ public class DiskMetadata {
 			var bais = new ByteArrayInputStream(serialized);
 			var dis = new DataInputStream(bais);
 			int size = dis.readInt();
-			int blocksCount = getBlocksCount(size, Web.BLOCK_SIZE);
+			int blocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
 			boolean[] downloadedBlocks = new boolean[blocksCount];
 			for (int i = 0; i < blocksCount; i++) {
 				downloadedBlocks[i] = dis.readBoolean();

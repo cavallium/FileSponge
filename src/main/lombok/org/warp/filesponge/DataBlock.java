@@ -30,6 +30,6 @@ public class DataBlock {
 
 
 	public int getId() {
-		return offset / Web.BLOCK_SIZE;
+		return offset / FileSponge.BLOCK_SIZE;
 	}
 }

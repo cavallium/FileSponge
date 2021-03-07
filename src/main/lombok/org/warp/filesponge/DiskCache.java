@@ -18,7 +18,7 @@
 
 package org.warp.filesponge;
 
-import static org.warp.filesponge.Web.BLOCK_SIZE;
+import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 
 import com.google.common.primitives.Ints;
 import it.cavallium.dbengine.database.Column;

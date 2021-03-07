@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public class Web implements URLsHandler {
+public class FileSponge implements URLsHandler {
 
 	public static final int BLOCK_SIZE = 8 * 1024 * 1024; // 8 MiB
 	public static final int MAX_BLOCKS = 256; // 2 GiB
@@ -33,7 +33,7 @@ public class Web implements URLsHandler {
 	private final Set<URLsDiskHandler> cacheAccess = new ConcurrentHashMap<URLsDiskHandler, Object>().keySet(new Object());
 	private final Set<URLsWriter> cacheWrite = new ConcurrentHashMap<URLsWriter, Object>().keySet(new Object());
 
-	public Web() {
+	public FileSponge() {
 
 	}
 
