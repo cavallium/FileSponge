@@ -52,10 +52,12 @@ public class FileSponge implements URLsHandler {
 	public Flux<DataBlock> requestContent(URL url) {
 		return Flux
 				.fromIterable(cacheAccess)
-				.flatMap(urlsHandler -> urlsHandler.requestContent(url))
+				.map(urlsHandler -> urlsHandler.requestContent(url))
+				.collectList()
+				.flatMapMany(Flux::firstWithValue)
 				.switchIfEmpty(Flux
 						.fromIterable(urlsHandlers)
-						.flatMap(urlsHandler -> urlsHandler
+						.map(urlsHandler -> urlsHandler
 								.requestContent(url)
 								.flatMapSequential(dataBlock -> Flux
 										.fromIterable(cacheWrite)
@@ -63,18 +65,22 @@ public class FileSponge implements URLsHandler {
 										.then(Mono.just(dataBlock))
 								)
 						)
+						.collectList()
+						.flatMapMany(Flux::firstWithValue)
 				)
 				.distinct(DataBlock::getId);
 	}
 
 	@Override
 	public Mono<Metadata> requestMetadata(URL url) {
-		return Mono.from(Flux
+		return Flux
 				.fromIterable(cacheAccess)
-				.flatMap(urlsHandler -> urlsHandler.requestMetadata(url))
+				.map(urlsHandler -> urlsHandler.requestMetadata(url))
+				.collectList()
+				.flatMap(Mono::firstWithValue)
 				.switchIfEmpty(Flux
 						.fromIterable(urlsHandlers)
-						.flatMap(urlsHandler -> urlsHandler
+						.map(urlsHandler -> urlsHandler
 								.requestMetadata(url)
 								.flatMap(dataBlock -> Flux
 										.fromIterable(cacheWrite)
@@ -82,6 +88,8 @@ public class FileSponge implements URLsHandler {
 										.then(Mono.just(dataBlock))
 								)
 						)
-				));
-		}
+						.collectList()
+						.flatMap(Mono::firstWithValue)
+				);
+	}
 }
