@@ -72,7 +72,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 						return Optional
 								.of(new DiskMetadata(
 										metadata.getSize(),
-										new BooleanArrayList(DiskMetadata.getBlocksCount(metadata.getSize(), BLOCK_SIZE))
+										BooleanArrayList.wrap(new boolean[DiskMetadata.getBlocksCount(metadata.getSize(), BLOCK_SIZE)])
 								))
 								.map(diskMetadataSerializer::serialize);
 					}
@@ -95,7 +95,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 								.map(prevMeta -> {
 									if (!prevMeta.getDownloadedBlocks().getBoolean(dataBlock.getId())) {
 										BooleanArrayList bal = prevMeta.getDownloadedBlocks().clone();
-										bal.add(dataBlock.getId(), true);
+										bal.set(dataBlock.getId(), true);
 										return new DiskMetadata(prevMeta.getSize(), bal);
 									} else {
 										return prevMeta;
@@ -111,35 +111,35 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 	public Flux<DataBlock> requestContent(URL url) {
 		return requestDiskMetadata(url)
 				.filter(DiskMetadata::isDownloadedFully)
-				.flatMapMany(meta -> Flux.fromIterable(meta.getDownloadedBlocks()))
-				.index()
-				// Get only downloaded blocks
-				.filter(Tuple2::getT2)
-				.flatMapSequential(blockMeta -> {
-					int blockId = Math.toIntExact(blockMeta.getT1());
-					boolean downloaded = blockMeta.getT2();
-					if (!downloaded) {
-						return Mono.empty();
-					}
-					return fileContent.get(null, getBlockKey(url, blockId)).map(data -> {
-						int blockOffset = getBlockOffset(blockId);
-						int blockLength = data.length;
-						if (blockOffset + blockLength >= blockMeta.size()) {
-							if (blockOffset + blockLength > blockMeta.size()) {
-								throw new IllegalStateException("Overflowed data size");
+				.flatMapMany(meta -> Flux.fromIterable(meta.getDownloadedBlocks())
+						.index()
+						// Get only downloaded blocks
+						.filter(Tuple2::getT2)
+						.flatMapSequential(blockMeta -> {
+							int blockId = Math.toIntExact(blockMeta.getT1());
+							boolean downloaded = blockMeta.getT2();
+							if (!downloaded) {
+								return Mono.<DataBlock>empty();
 							}
-						} else if (data.length != BLOCK_SIZE) {
-							throw new IllegalStateException("Block data length != block length");
-						}
-						return new DataBlock(blockOffset, blockLength, ByteBuffer.wrap(data, 0, blockLength));
-					});
-				});
+							return fileContent.get(null, getBlockKey(url, blockId)).map(data -> {
+								int blockOffset = getBlockOffset(blockId);
+								int blockLength = data.length;
+								if (blockOffset + blockLength >= meta.getSize()) {
+									if (blockOffset + blockLength > meta.getSize()) {
+										throw new IllegalStateException("Overflowed data size");
+									}
+								} else if (data.length != BLOCK_SIZE) {
+									throw new IllegalStateException("Block data length != block length");
+								}
+								return new DataBlock(blockOffset, blockLength, ByteBuffer.wrap(data, 0, blockLength));
+							});
+						}));
 	}
 
 	private byte[] getBlockKey(URL url, int blockId) {
 		byte[] urlBytes = url.getSerializer().serialize(url);
 		byte[] blockIdBytes = Ints.toByteArray(blockId);
-		byte[] resultBytes = Arrays.copyOf(urlBytes, urlBytes.length);
+		byte[] resultBytes = Arrays.copyOf(urlBytes, urlBytes.length + blockIdBytes.length);
 		System.arraycopy(blockIdBytes, 0, resultBytes, urlBytes.length, blockIdBytes.length);
 		return resultBytes;
 	}

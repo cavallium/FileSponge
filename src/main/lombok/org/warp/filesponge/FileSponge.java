@@ -20,13 +20,17 @@ package org.warp.filesponge;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class FileSponge implements URLsHandler {
 
-	public static final int BLOCK_SIZE = 8 * 1024 * 1024; // 8 MiB
-	public static final int MAX_BLOCKS = 256; // 2 GiB
+	private static final Logger logger = LoggerFactory.getLogger(FileSponge.class);
+
+	public static final int BLOCK_SIZE = 1024 * 1024; // 1 MiB
 
 	private final Set<URLsHandler> urlsHandlers = new ConcurrentHashMap<URLsHandler, Object>().keySet(new Object());
 
@@ -50,13 +54,20 @@ public class FileSponge implements URLsHandler {
 
 	@Override
 	public Flux<DataBlock> requestContent(URL url) {
+		AtomicBoolean alreadyPrintedDebug = new AtomicBoolean(false);
 		return Flux
 				.fromIterable(cacheAccess)
 				.map(urlsHandler -> urlsHandler.requestContent(url))
 				.collectList()
-				.flatMapMany(Flux::firstWithValue)
+				.flatMapMany(monos -> FileSpongeUtils.firstWithValueFlux(monos))
+				.doOnNext(dataBlock -> {
+					if (alreadyPrintedDebug.compareAndSet(false, true)) {
+						logger.debug("File \"{}\" content has been found in the cache", url);
+					}
+				})
 				.switchIfEmpty(Flux
 						.fromIterable(urlsHandlers)
+						.doOnSubscribe(s -> logger.debug("Downloading file \"{}\" content", url))
 						.map(urlsHandler -> urlsHandler
 								.requestContent(url)
 								.flatMapSequential(dataBlock -> Flux
@@ -66,7 +77,8 @@ public class FileSponge implements URLsHandler {
 								)
 						)
 						.collectList()
-						.flatMapMany(Flux::firstWithValue)
+						.flatMapMany(monos -> FileSpongeUtils.firstWithValueFlux(monos))
+						.doOnComplete(() -> logger.debug("Downloaded file \"{}\" content", url))
 				)
 				.distinct(DataBlock::getId);
 	}
@@ -77,9 +89,15 @@ public class FileSponge implements URLsHandler {
 				.fromIterable(cacheAccess)
 				.map(urlsHandler -> urlsHandler.requestMetadata(url))
 				.collectList()
-				.flatMap(Mono::firstWithValue)
+				.flatMap(monos -> FileSpongeUtils.firstWithValueMono(monos))
+				.doOnSuccess(metadata -> {
+					if (metadata != null) {
+						logger.debug("File \"{}\" metadata has been found in the cache", url);
+					}
+				})
 				.switchIfEmpty(Flux
 						.fromIterable(urlsHandlers)
+						.doOnSubscribe(s -> logger.debug("Downloading file \"{}\" metadata", url))
 						.map(urlsHandler -> urlsHandler
 								.requestMetadata(url)
 								.flatMap(dataBlock -> Flux
@@ -89,7 +107,14 @@ public class FileSponge implements URLsHandler {
 								)
 						)
 						.collectList()
-						.flatMap(Mono::firstWithValue)
+						.flatMap(monos -> FileSpongeUtils.firstWithValueMono(monos))
+						.doOnSuccess(s -> {
+							if (s != null) {
+								logger.debug("Downloaded file \"{}\" metadata", url);
+							} else {
+								logger.debug("File \"{}\" metadata has not been found anywhere", url);
+							}
+						})
 				);
 	}
 }

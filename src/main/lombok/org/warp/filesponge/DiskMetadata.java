@@ -53,7 +53,9 @@ public class DiskMetadata {
 	private int getBlocksCount() {
 		var expectedBlocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
 		if (this.getDownloadedBlocks().size() != expectedBlocksCount) {
-			throw new IllegalStateException("Blocks array length != expected blocks count");
+			throw new IllegalStateException(
+					"Blocks array length (" + this.getDownloadedBlocks().size()
+							+ ") != expected blocks count (" + expectedBlocksCount + ")");
 		}
 		return expectedBlocksCount;
 	}
@@ -75,22 +77,20 @@ public class DiskMetadata {
 			var dis = new DataInputStream(bais);
 			int size = dis.readInt();
 			int blocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
-			boolean[] downloadedBlocks = new boolean[blocksCount];
+			var downloadedBlocks = new BooleanArrayList(blocksCount);
 			for (int i = 0; i < blocksCount; i++) {
-				downloadedBlocks[i] = dis.readBoolean();
+				downloadedBlocks.add(dis.readBoolean());
 			}
-			return new DiskMetadata(size, BooleanArrayList.wrap(downloadedBlocks, blocksCount));
+			return new DiskMetadata(size, downloadedBlocks);
 		}
 
 		@SneakyThrows
 		@Override
 		public byte @NotNull [] serialize(@NotNull DiskMetadata deserialized) {
-			try (var bos = new ByteArrayOutputStream(Integer.BYTES * 2)) {
+			try (var bos = new ByteArrayOutputStream()) {
 				try (var dos = new DataOutputStream(bos)) {
 					dos.writeInt(deserialized.getSize());
-					if (deserialized.getDownloadedBlocks().size() != deserialized.getBlocksCount()) {
-						throw new IllegalStateException("Blocks array length != expected blocks count");
-					}
+					deserialized.getBlocksCount();
 					for (boolean downloadedBlock : deserialized.getDownloadedBlocks()) {
 						dos.writeBoolean(downloadedBlock);
 					}
