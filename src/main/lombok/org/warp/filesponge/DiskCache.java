@@ -128,8 +128,9 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 									if (blockOffset + blockLength > meta.getSize()) {
 										throw new IllegalStateException("Overflowed data size");
 									}
-								} else if (data.length != BLOCK_SIZE) {
-									throw new IllegalStateException("Block data length != block length");
+								} else {
+									// Intermediate blocks must be of max size
+									assert data.length == BLOCK_SIZE;
 								}
 								return new DataBlock(blockOffset, blockLength, ByteBuffer.wrap(data, 0, blockLength));
 							});
