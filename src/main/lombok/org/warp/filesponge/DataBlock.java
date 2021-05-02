@@ -18,16 +18,28 @@
 
 package org.warp.filesponge;
 
+import io.netty.buffer.ByteBuf;
 import java.nio.ByteBuffer;
 import lombok.Value;
 
 @Value
 public class DataBlock {
 
+	public DataBlock(int offset, int length, ByteBuf data) {
+		this.offset = offset;
+		assert data.isDirect();
+		this.length = length;
+		this.data = data;
+	}
+
 	int offset;
 	int length;
-	ByteBuffer data;
+	ByteBuf data;
 
+	public ByteBuf getData() {
+		assert data.isReadable();
+		return data;
+	}
 
 	public int getId() {
 		return offset / FileSponge.BLOCK_SIZE;

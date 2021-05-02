@@ -21,6 +21,9 @@ package org.warp.filesponge;
 import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 
 import com.google.common.primitives.Ints;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import it.cavallium.dbengine.database.Column;
 import it.cavallium.dbengine.database.LLDatabaseConnection;
 import it.cavallium.dbengine.database.LLDictionary;
@@ -34,6 +37,7 @@ import java.util.List;
 import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import org.jetbrains.annotations.Nullable;
 import org.warp.filesponge.DiskMetadata.DiskMetadataSerializer;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -52,7 +56,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 	public static Mono<DiskCache> open(LLDatabaseConnection databaseConnection, String dbName, boolean lowMemory) {
 		return databaseConnection
-				.getDatabase(dbName, List.of(Column.dictionary("file-content"), Column.dictionary("file-metadata")), lowMemory)
+				.getDatabase(dbName, List.of(Column.dictionary("file-content"), Column.dictionary("file-metadata")), lowMemory, false)
 				.flatMap(db -> Mono.zip(
 						Mono.just(db).single(),
 						db.getDictionary("file-content", UpdateMode.ALLOW).single(),
@@ -66,15 +70,13 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 	public Mono<Void> writeMetadata(URL url, Metadata metadata) {
 		return fileMetadata
 				.update(url.getSerializer().serialize(url), oldValue -> {
-					if (oldValue.isPresent()) {
+					if (oldValue != null) {
 						return oldValue;
 					} else {
-						return Optional
-								.of(new DiskMetadata(
+						return diskMetadataSerializer.serialize(new DiskMetadata(
 										metadata.getSize(),
 										BooleanArrayList.wrap(new boolean[DiskMetadata.getBlocksCount(metadata.getSize(), BLOCK_SIZE)])
-								))
-								.map(diskMetadataSerializer::serialize);
+								));
 					}
 				})
 				.then();
@@ -84,26 +86,36 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 	public Mono<Void> writeContentBlock(URL url, DataBlock dataBlock) {
 		return Mono
 				.fromCallable(() -> {
-					byte[] bytes = new byte[dataBlock.getLength()];
-					dataBlock.getData().get(bytes);
+					return dataBlock.getData();
+					/*
+					ByteBuf bytes = PooledByteBufAllocator.DEFAULT.directBuffer(dataBlock.getLength());
+					bytes.writeBytes(dataBlock.getData().slice());
 					return bytes;
-				}).subscribeOn(Schedulers.boundedElastic())
+
+					 */
+				})
+				.subscribeOn(Schedulers.boundedElastic())
 				.flatMap(bytes -> fileContent.put(getBlockKey(url, dataBlock.getId()), bytes, LLDictionaryResultType.VOID))
-				.then(fileMetadata
-						.update(url.getSerializer().serialize(url), prevBytes -> prevBytes
-								.map(diskMetadataSerializer::deserialize)
-								.map(prevMeta -> {
-									if (!prevMeta.getDownloadedBlocks().getBoolean(dataBlock.getId())) {
-										BooleanArrayList bal = prevMeta.getDownloadedBlocks().clone();
-										bal.set(dataBlock.getId(), true);
-										return new DiskMetadata(prevMeta.getSize(), bal);
-									} else {
-										return prevMeta;
-									}
-								})
-								.map(diskMetadataSerializer::serialize)
-						)
-				)
+				.then(fileMetadata.update(url.getSerializer().serialize(url), prevBytes -> {
+					@Nullable DiskMetadata result;
+					if (prevBytes != null) {
+						DiskMetadata prevMeta = diskMetadataSerializer.deserialize(prevBytes);
+						if (!prevMeta.getDownloadedBlocks().getBoolean(dataBlock.getId())) {
+							BooleanArrayList bal = prevMeta.getDownloadedBlocks().clone();
+							bal.set(dataBlock.getId(), true);
+							result = new DiskMetadata(prevMeta.getSize(), bal);
+						} else {
+							result = prevMeta;
+						}
+					} else {
+						result = null;
+					}
+					if (result != null) {
+						return diskMetadataSerializer.serialize(result);
+					} else {
+						return null;
+					}
+				}))
 				.then();
 	}
 
@@ -123,26 +135,25 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 							}
 							return fileContent.get(null, getBlockKey(url, blockId)).map(data -> {
 								int blockOffset = getBlockOffset(blockId);
-								int blockLength = data.length;
+								int blockLength = data.readableBytes();
 								if (blockOffset + blockLength >= meta.getSize()) {
 									if (blockOffset + blockLength > meta.getSize()) {
 										throw new IllegalStateException("Overflowed data size");
 									}
 								} else {
 									// Intermediate blocks must be of max size
-									assert data.length == BLOCK_SIZE;
+									assert data.readableBytes() == BLOCK_SIZE;
 								}
-								return new DataBlock(blockOffset, blockLength, ByteBuffer.wrap(data, 0, blockLength));
+								return new DataBlock(blockOffset, blockLength, data);
 							});
 						}));
 	}
 
-	private byte[] getBlockKey(URL url, int blockId) {
-		byte[] urlBytes = url.getSerializer().serialize(url);
-		byte[] blockIdBytes = Ints.toByteArray(blockId);
-		byte[] resultBytes = Arrays.copyOf(urlBytes, urlBytes.length + blockIdBytes.length);
-		System.arraycopy(blockIdBytes, 0, resultBytes, urlBytes.length, blockIdBytes.length);
-		return resultBytes;
+	private ByteBuf getBlockKey(URL url, int blockId) {
+		ByteBuf urlBytes = url.getSerializer().serialize(url);
+		ByteBuf blockIdBytes = PooledByteBufAllocator.DEFAULT.directBuffer(Integer.BYTES, Integer.BYTES);
+		blockIdBytes.writeInt(blockId);
+		return Unpooled.wrappedBuffer(urlBytes, blockIdBytes);
 	}
 
 	private static int getBlockOffset(int blockId) {

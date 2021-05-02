@@ -18,6 +18,10 @@
 
 package org.warp.filesponge;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.PooledByteBufAllocator;
 import it.cavallium.dbengine.database.serialization.Serializer;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.io.ByteArrayInputStream;
@@ -68,26 +72,31 @@ public class DiskMetadata {
 		return new Metadata(size);
 	}
 
-	public static class DiskMetadataSerializer implements Serializer<DiskMetadata, byte[]> {
+	public static class DiskMetadataSerializer implements Serializer<DiskMetadata, ByteBuf> {
 
 		@SneakyThrows
 		@Override
-		public @NotNull DiskMetadata deserialize(byte @NotNull [] serialized) {
-			var bais = new ByteArrayInputStream(serialized);
-			var dis = new DataInputStream(bais);
-			int size = dis.readInt();
-			int blocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
-			var downloadedBlocks = new BooleanArrayList(blocksCount);
-			for (int i = 0; i < blocksCount; i++) {
-				downloadedBlocks.add(dis.readBoolean());
+		public @NotNull DiskMetadata deserialize(@NotNull ByteBuf serialized) {
+			try {
+				var bais = new ByteBufInputStream(serialized);
+				var dis = new DataInputStream(bais);
+				int size = dis.readInt();
+				int blocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
+				var downloadedBlocks = new BooleanArrayList(blocksCount);
+				for (int i = 0; i < blocksCount; i++) {
+					downloadedBlocks.add(dis.readBoolean());
+				}
+				return new DiskMetadata(size, downloadedBlocks);
+			} finally {
+				serialized.release();
 			}
-			return new DiskMetadata(size, downloadedBlocks);
 		}
 
 		@SneakyThrows
 		@Override
-		public byte @NotNull [] serialize(@NotNull DiskMetadata deserialized) {
-			try (var bos = new ByteArrayOutputStream()) {
+		public @NotNull ByteBuf serialize(@NotNull DiskMetadata deserialized) {
+			ByteBuf buffer = PooledByteBufAllocator.DEFAULT.directBuffer();
+			try (var bos = new ByteBufOutputStream(buffer)) {
 				try (var dos = new DataOutputStream(bos)) {
 					dos.writeInt(deserialized.getSize());
 					deserialized.getBlocksCount();
@@ -95,7 +104,7 @@ public class DiskMetadata {
 						dos.writeBoolean(downloadedBlock);
 					}
 				}
-				return bos.toByteArray();
+				return buffer;
 			}
 		}
 
