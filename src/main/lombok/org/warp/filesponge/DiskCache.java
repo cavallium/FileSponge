@@ -24,6 +24,7 @@ import com.google.common.primitives.Ints;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
+import io.netty.util.ReferenceCounted;
 import it.cavallium.dbengine.database.Column;
 import it.cavallium.dbengine.database.LLDatabaseConnection;
 import it.cavallium.dbengine.database.LLDictionary;
@@ -96,6 +97,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 				})
 				.subscribeOn(Schedulers.boundedElastic())
 				.flatMap(bytes -> fileContent.put(getBlockKey(url, dataBlock.getId()), bytes, LLDictionaryResultType.VOID))
+				.doOnNext(ReferenceCounted::release)
 				.then(fileMetadata.update(url.getSerializer().serialize(url), prevBytes -> {
 					@Nullable DiskMetadata result;
 					if (prevBytes != null) {
