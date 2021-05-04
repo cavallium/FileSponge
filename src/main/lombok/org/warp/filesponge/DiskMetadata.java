@@ -19,6 +19,7 @@
 package org.warp.filesponge;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -31,6 +32,7 @@ import java.io.DataOutputStream;
 import lombok.Data;
 import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
+import org.warp.filesponge.DiskMetadata.DiskMetadataSerializer;
 
 @Data
 public class DiskMetadata {
@@ -74,6 +76,12 @@ public class DiskMetadata {
 
 	public static class DiskMetadataSerializer implements Serializer<DiskMetadata, ByteBuf> {
 
+		private final ByteBufAllocator allocator;
+
+		public DiskMetadataSerializer(ByteBufAllocator allocator) {
+			this.allocator = allocator;
+		}
+		
 		@SneakyThrows
 		@Override
 		public @NotNull DiskMetadata deserialize(@NotNull ByteBuf serialized) {
@@ -95,7 +103,7 @@ public class DiskMetadata {
 		@SneakyThrows
 		@Override
 		public @NotNull ByteBuf serialize(@NotNull DiskMetadata deserialized) {
-			ByteBuf buffer = PooledByteBufAllocator.DEFAULT.directBuffer();
+			ByteBuf buffer = allocator.buffer();
 			try (var bos = new ByteBufOutputStream(buffer)) {
 				try (var dos = new DataOutputStream(bos)) {
 					dos.writeInt(deserialized.getSize());

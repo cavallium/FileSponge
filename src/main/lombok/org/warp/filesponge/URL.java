@@ -19,10 +19,11 @@
 package org.warp.filesponge;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import it.cavallium.dbengine.database.serialization.Serializer;
 
 public interface URL {
 
-	Serializer<URL, ByteBuf> getSerializer();
+	Serializer<URL, ByteBuf> getSerializer(ByteBufAllocator allocator);
 
 }

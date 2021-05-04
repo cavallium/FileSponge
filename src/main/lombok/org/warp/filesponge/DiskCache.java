@@ -46,14 +46,20 @@ import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class DiskCache implements URLsDiskHandler, URLsWriter {
 
-	private static final DiskMetadataSerializer diskMetadataSerializer = new DiskMetadataSerializer();
+	private final DiskMetadataSerializer diskMetadataSerializer;
 
 	private final LLKeyValueDatabase db;
 	private final LLDictionary fileContent;
 	private final LLDictionary fileMetadata;
+
+	public DiskCache(LLKeyValueDatabase db, LLDictionary fileContent, LLDictionary fileMetadata) {
+		this.db = db;
+		this.fileContent = fileContent;
+		this.fileMetadata = fileMetadata;
+		this.diskMetadataSerializer = new DiskMetadataSerializer(db.getAllocator());
+	}
 
 	public static Mono<DiskCache> open(LLDatabaseConnection databaseConnection, String dbName, boolean lowMemory) {
 		return databaseConnection
@@ -70,7 +76,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 	@Override
 	public Mono<Void> writeMetadata(URL url, Metadata metadata) {
 		return fileMetadata
-				.update(url.getSerializer().serialize(url), oldValue -> {
+				.update(url.getSerializer(db.getAllocator()).serialize(url), oldValue -> {
 					if (oldValue != null) {
 						return oldValue;
 					} else {
@@ -98,7 +104,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 				.subscribeOn(Schedulers.boundedElastic())
 				.flatMap(bytes -> fileContent.put(getBlockKey(url, dataBlock.getId()), bytes, LLDictionaryResultType.VOID))
 				.doOnNext(ReferenceCounted::release)
-				.then(fileMetadata.update(url.getSerializer().serialize(url), prevBytes -> {
+				.then(fileMetadata.update(url.getSerializer(db.getAllocator()).serialize(url), prevBytes -> {
 					@Nullable DiskMetadata result;
 					if (prevBytes != null) {
 						DiskMetadata prevMeta = diskMetadataSerializer.deserialize(prevBytes);
@@ -152,8 +158,8 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 	}
 
 	private ByteBuf getBlockKey(URL url, int blockId) {
-		ByteBuf urlBytes = url.getSerializer().serialize(url);
-		ByteBuf blockIdBytes = PooledByteBufAllocator.DEFAULT.directBuffer(Integer.BYTES, Integer.BYTES);
+		ByteBuf urlBytes = url.getSerializer(db.getAllocator()).serialize(url);
+		ByteBuf blockIdBytes = this.db.getAllocator().directBuffer(Integer.BYTES, Integer.BYTES);
 		blockIdBytes.writeInt(blockId);
 		return Unpooled.wrappedBuffer(urlBytes, blockIdBytes);
 	}
@@ -165,7 +171,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 	@Override
 	public Mono<DiskMetadata> requestDiskMetadata(URL url) {
 		return fileMetadata
-				.get(null, url.getSerializer().serialize(url))
+				.get(null, url.getSerializer(db.getAllocator()).serialize(url))
 				.map(diskMetadataSerializer::deserialize);
 	}
 
@@ -178,7 +184,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 	@Override
 	public Mono<Tuple2<Metadata, Flux<DataBlock>>> request(URL url) {
 		return fileMetadata
-				.get(null, url.getSerializer().serialize(url))
+				.get(null, url.getSerializer(db.getAllocator()).serialize(url))
 				.map(diskMetadataSerializer::deserialize)
 				.map(diskMeta -> {
 					var meta = diskMeta.asMetadata();
