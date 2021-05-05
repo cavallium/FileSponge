@@ -19,29 +19,82 @@
 package org.warp.filesponge;
 
 import io.netty.buffer.ByteBuf;
-import java.nio.ByteBuffer;
-import lombok.Value;
+import java.util.Objects;
 
-@Value
-public class DataBlock {
+public final class DataBlock {
 
 	public DataBlock(int offset, int length, ByteBuf data) {
-		this.offset = offset;
-		assert data.isDirect();
-		this.length = length;
-		this.data = data;
+		try {
+			this.offset = offset;
+			this.length = length;
+			this.data = data.retain();
+		} finally {
+			data.release();
+		}
 	}
 
-	int offset;
-	int length;
-	ByteBuf data;
+	private final int offset;
+	private final int length;
+	private final ByteBuf data;
 
 	public ByteBuf getData() {
 		assert data.isReadable();
-		return data;
+		return data.retain();
 	}
 
 	public int getId() {
 		return offset / FileSponge.BLOCK_SIZE;
+	}
+
+	public int getOffset() {
+		return this.offset;
+	}
+
+	public int getLength() {
+		return this.length;
+	}
+
+	public boolean equals(final Object o) {
+		if (o == this) {
+			return true;
+		}
+		if (!(o instanceof DataBlock)) {
+			return false;
+		}
+		final DataBlock other = (DataBlock) o;
+		if (this.getOffset() != other.getOffset()) {
+			return false;
+		}
+		if (this.getLength() != other.getLength()) {
+			return false;
+		}
+		final Object this$data = this.getData();
+		final Object other$data = other.getData();
+		if (!Objects.equals(this$data, other$data)) {
+			return false;
+		}
+		return true;
+	}
+
+	public int hashCode() {
+		final int PRIME = 59;
+		int result = 1;
+		result = result * PRIME + this.getOffset();
+		result = result * PRIME + this.getLength();
+		final Object $data = this.getData();
+		result = result * PRIME + ($data == null ? 43 : $data.hashCode());
+		return result;
+	}
+
+	public String toString() {
+		return "DataBlock(offset=" + this.getOffset() + ", length=" + this.getLength() + ", data=" + this.getData() + ")";
+	}
+
+	public void retain() {
+		this.data.retain();
+	}
+
+	public void release() {
+		this.data.release();
 	}
 }

@@ -92,18 +92,13 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 	@Override
 	public Mono<Void> writeContentBlock(URL url, DataBlock dataBlock) {
 		return Mono
-				.fromCallable(() -> {
-					return dataBlock.getData();
-					/*
-					ByteBuf bytes = PooledByteBufAllocator.DEFAULT.directBuffer(dataBlock.getLength());
-					bytes.writeBytes(dataBlock.getData().slice());
-					return bytes;
-
-					 */
-				})
+				.fromCallable(dataBlock::getData)
 				.subscribeOn(Schedulers.boundedElastic())
-				.flatMap(bytes -> fileContent.put(getBlockKey(url, dataBlock.getId()), bytes, LLDictionaryResultType.VOID))
-				.doOnNext(ReferenceCounted::release)
+				.flatMap(bytes -> fileContent
+						.put(getBlockKey(url, dataBlock.getId()), bytes, LLDictionaryResultType.VOID)
+						.doOnNext(ReferenceCounted::release)
+						.then()
+				)
 				.then(fileMetadata.update(url.getSerializer(db.getAllocator()).serialize(url), prevBytes -> {
 					@Nullable DiskMetadata result;
 					if (prevBytes != null) {
@@ -142,17 +137,21 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 								return Mono.<DataBlock>empty();
 							}
 							return fileContent.get(null, getBlockKey(url, blockId)).map(data -> {
-								int blockOffset = getBlockOffset(blockId);
-								int blockLength = data.readableBytes();
-								if (blockOffset + blockLength >= meta.getSize()) {
-									if (blockOffset + blockLength > meta.getSize()) {
-										throw new IllegalStateException("Overflowed data size");
+								try {
+									int blockOffset = getBlockOffset(blockId);
+									int blockLength = data.readableBytes();
+									if (blockOffset + blockLength >= meta.getSize()) {
+										if (blockOffset + blockLength > meta.getSize()) {
+											throw new IllegalStateException("Overflowed data size");
+										}
+									} else {
+										// Intermediate blocks must be of max size
+										assert data.readableBytes() == BLOCK_SIZE;
 									}
-								} else {
-									// Intermediate blocks must be of max size
-									assert data.readableBytes() == BLOCK_SIZE;
+									return new DataBlock(blockOffset, blockLength, data.retain());
+								} finally {
+									data.release();
 								}
-								return new DataBlock(blockOffset, blockLength, data);
 							});
 						}));
 	}

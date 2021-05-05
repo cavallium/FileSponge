@@ -18,6 +18,7 @@
 
 package org.warp.filesponge;
 
+import it.cavallium.dbengine.database.disk.LLLocalDictionary.ReleasableSlice;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class FileSponge implements URLsHandler {
 
@@ -59,6 +61,7 @@ public class FileSponge implements URLsHandler {
 				.fromIterable(cacheAccess)
 				.map(urlsHandler -> urlsHandler.requestContent(url))
 				.collectList()
+				.doOnDiscard(DataBlock.class, DataBlock::release)
 				.flatMapMany(monos -> FileSpongeUtils.firstWithValueFlux(monos))
 				.doOnNext(dataBlock -> {
 					if (alreadyPrintedDebug.compareAndSet(false, true)) {
@@ -77,10 +80,16 @@ public class FileSponge implements URLsHandler {
 								)
 						)
 						.collectList()
+						.doOnDiscard(Flux.class, f -> {
+							//noinspection unchecked
+							Flux<DataBlock> flux = (Flux<DataBlock>) f;
+							flux.doOnNext(DataBlock::release).subscribeOn(Schedulers.single()).subscribe();
+						})
 						.flatMapMany(monos -> FileSpongeUtils.firstWithValueFlux(monos))
 						.doOnComplete(() -> logger.debug("Downloaded file \"{}\" content", url))
 				)
-				.distinct(DataBlock::getId);
+				.distinct(DataBlock::getId)
+				.doOnDiscard(DataBlock.class, DataBlock::release);
 	}
 
 	@Override
