@@ -31,6 +31,7 @@ import it.cavallium.dbengine.database.LLDictionary;
 import it.cavallium.dbengine.database.LLDictionaryResultType;
 import it.cavallium.dbengine.database.LLKeyValueDatabase;
 import it.cavallium.dbengine.database.UpdateMode;
+import it.cavallium.dbengine.database.UpdateReturnMode;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -85,7 +86,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 										BooleanArrayList.wrap(new boolean[DiskMetadata.getBlocksCount(metadata.getSize(), BLOCK_SIZE)])
 								));
 					}
-				})
+				}, UpdateReturnMode.NOTHING)
 				.then();
 	}
 
@@ -118,7 +119,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 					} else {
 						return null;
 					}
-				}))
+				}, UpdateReturnMode.NOTHING))
 				.then();
 	}
 

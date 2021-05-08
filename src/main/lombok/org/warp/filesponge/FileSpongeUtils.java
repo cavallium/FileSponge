@@ -45,17 +45,18 @@ public class FileSpongeUtils {
 	}
 
 	private static <T> Mono<T> ignoreFakeErrors(Throwable ex) {
-		return Mono.defer(() -> {
+		return Mono.create(sink -> {
 			if (ex instanceof NoSuchElementException) {
 				var multiple = Exceptions.unwrapMultiple(ex.getCause());
 				for (Throwable throwable : multiple) {
 					if (!(throwable instanceof NoSuchElementException)) {
-						return Mono.error(ex);
+						sink.error(ex);
+						return;
 					}
 				}
-				return Mono.empty();
+				sink.success();
 			} else {
-				return Mono.error(ex);
+				sink.error(ex);
 			}
 		});
 	}
