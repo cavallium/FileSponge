@@ -32,14 +32,11 @@ import it.cavallium.dbengine.database.LLDictionaryResultType;
 import it.cavallium.dbengine.database.LLKeyValueDatabase;
 import it.cavallium.dbengine.database.UpdateMode;
 import it.cavallium.dbengine.database.UpdateReturnMode;
-import it.cavallium.dbengine.database.disk.LLLocalDictionary.ReleasableSlice;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import org.jetbrains.annotations.Nullable;
 import org.warp.filesponge.DiskMetadata.DiskMetadataSerializer;
 import reactor.core.publisher.Flux;
@@ -86,8 +83,8 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 										return oldValue;
 									} else {
 										return diskMetadataSerializer.serialize(new DiskMetadata(
-												metadata.getSize(),
-												BooleanArrayList.wrap(new boolean[DiskMetadata.getBlocksCount(metadata.getSize(), BLOCK_SIZE)])
+												metadata.size(),
+												BooleanArrayList.wrap(new boolean[DiskMetadata.getBlocksCount(metadata.size(), BLOCK_SIZE)])
 										));
 									}
 								}, UpdateReturnMode.NOTHING),
@@ -118,10 +115,10 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 									@Nullable DiskMetadata result;
 									if (prevBytes != null) {
 										DiskMetadata prevMeta = diskMetadataSerializer.deserialize(prevBytes);
-										if (!prevMeta.getDownloadedBlocks().getBoolean(dataBlock.getId())) {
-											BooleanArrayList bal = prevMeta.getDownloadedBlocks().clone();
+										if (!prevMeta.downloadedBlocks().getBoolean(dataBlock.getId())) {
+											BooleanArrayList bal = prevMeta.downloadedBlocks().clone();
 											bal.set(dataBlock.getId(), true);
-											result = new DiskMetadata(prevMeta.getSize(), bal);
+											result = new DiskMetadata(prevMeta.size(), bal);
 										} else {
 											result = prevMeta;
 										}
@@ -144,7 +141,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 	public Flux<DataBlock> requestContent(URL url) {
 		return requestDiskMetadata(url)
 				.filter(DiskMetadata::isDownloadedFully)
-				.flatMapMany(meta -> Flux.fromIterable(meta.getDownloadedBlocks())
+				.flatMapMany(meta -> Flux.fromIterable(meta.downloadedBlocks())
 						.index()
 						// Get only downloaded blocks
 						.filter(Tuple2::getT2)
@@ -164,8 +161,8 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 										try {
 											int blockOffset = getBlockOffset(blockId);
 											int blockLength = data.readableBytes();
-											if (blockOffset + blockLength >= meta.getSize()) {
-												if (blockOffset + blockLength > meta.getSize()) {
+											if (blockOffset + blockLength >= meta.size()) {
+												if (blockOffset + blockLength > meta.size()) {
 													throw new IllegalStateException("Overflowed data size");
 												}
 											} else {

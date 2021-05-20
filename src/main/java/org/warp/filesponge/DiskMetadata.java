@@ -29,39 +29,30 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import lombok.Data;
-import lombok.SneakyThrows;
+import java.io.IOException;
+import org.apache.commons.lang3.SerializationException;
 import org.jetbrains.annotations.NotNull;
-import org.warp.filesponge.DiskMetadata.DiskMetadataSerializer;
 
-@Data
-public class DiskMetadata {
-
-	/**
-	 * -1 = unknown size
-	 */
-	private final int size;
-
-	private final BooleanArrayList downloadedBlocks;
-
-	private Boolean downloadedFully;
+/**
+ * size -1 = unknown size
+ */
+public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 
 	public boolean isDownloadedFully() {
-		if (downloadedFully == null) {
-			// Ensure blocks count is valid by calling getBlocksCount()
-			getBlocksCount();
-			// It's fully downloaded if every block is true
-			downloadedFully = !this.getDownloadedBlocks().contains(false);
-		}
-		return downloadedFully;
+		boolean downloadedFullyVal;
+		// Ensure blocks count is valid by calling getBlocksCount()
+		getBlocksCount();
+		// It's fully downloaded if every block is true
+		downloadedFullyVal = !this.downloadedBlocks().contains(false);
+		return downloadedFullyVal;
 	}
 
 	private int getBlocksCount() {
 		var expectedBlocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
-		if (this.getDownloadedBlocks().size() != expectedBlocksCount) {
+		if (this.downloadedBlocks.size() != expectedBlocksCount) {
 			throw new IllegalStateException(
-					"Blocks array length (" + this.getDownloadedBlocks().size()
-							+ ") != expected blocks count (" + expectedBlocksCount + ")");
+					"Blocks array length (" + this.downloadedBlocks().size() + ") != expected blocks count ("
+							+ expectedBlocksCount + ")");
 		}
 		return expectedBlocksCount;
 	}
@@ -81,8 +72,7 @@ public class DiskMetadata {
 		public DiskMetadataSerializer(ByteBufAllocator allocator) {
 			this.allocator = allocator;
 		}
-		
-		@SneakyThrows
+
 		@Override
 		public @NotNull DiskMetadata deserialize(@NotNull ByteBuf serialized) {
 			try {
@@ -95,24 +85,27 @@ public class DiskMetadata {
 					downloadedBlocks.add(dis.readBoolean());
 				}
 				return new DiskMetadata(size, downloadedBlocks);
+			} catch (IOException e) {
+				throw new SerializationException(e);
 			} finally {
 				serialized.release();
 			}
 		}
 
-		@SneakyThrows
 		@Override
 		public @NotNull ByteBuf serialize(@NotNull DiskMetadata deserialized) {
 			ByteBuf buffer = allocator.buffer();
 			try (var bos = new ByteBufOutputStream(buffer)) {
 				try (var dos = new DataOutputStream(bos)) {
-					dos.writeInt(deserialized.getSize());
+					dos.writeInt(deserialized.size());
 					deserialized.getBlocksCount();
-					for (boolean downloadedBlock : deserialized.getDownloadedBlocks()) {
+					for (boolean downloadedBlock : deserialized.downloadedBlocks) {
 						dos.writeBoolean(downloadedBlock);
 					}
 				}
 				return buffer;
+			} catch (IOException e) {
+				throw new SerializationException(e);
 			}
 		}
 

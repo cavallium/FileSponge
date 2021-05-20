@@ -18,14 +18,8 @@
 
 package org.warp.filesponge;
 
-import lombok.Value;
 
-@Value
-public class Metadata {
-
-	/**
-	 * -1 = unknown size
-	 */
-	int size;
-
-}
+/**
+ * size -1 = unknown size
+ */
+public record Metadata(int size) {}

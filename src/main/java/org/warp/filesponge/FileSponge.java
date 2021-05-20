@@ -18,7 +18,6 @@
 
 package org.warp.filesponge;
 
-import it.cavallium.dbengine.database.disk.LLLocalDictionary.ReleasableSlice;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
