@@ -115,9 +115,21 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 									@Nullable DiskMetadata result;
 									if (prevBytes != null) {
 										DiskMetadata prevMeta = diskMetadataSerializer.deserialize(prevBytes);
-										if (!prevMeta.downloadedBlocks().getBoolean(dataBlock.getId())) {
+										if (!prevMeta.isDownloadedBlock(dataBlock.getId())) {
 											BooleanArrayList bal = prevMeta.downloadedBlocks().clone();
-											bal.set(dataBlock.getId(), true);
+											if (prevMeta.size() == -1) {
+												if (bal.size() > dataBlock.getId()) {
+													bal.set(dataBlock.getId(), true);
+												} else if (bal.size() == dataBlock.getId()) {
+													bal.add(true);
+												} else {
+													throw new IndexOutOfBoundsException(
+															"Trying to write a block too much far from the last block. Previous total blocks: "
+																	+ bal.size() + " Current block id: " + dataBlock.getId());
+												}
+											} else {
+												bal.set(dataBlock.getId(), true);
+											}
 											result = new DiskMetadata(prevMeta.size(), bal);
 										} else {
 											result = prevMeta;
@@ -161,13 +173,15 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 										try {
 											int blockOffset = getBlockOffset(blockId);
 											int blockLength = data.readableBytes();
-											if (blockOffset + blockLength >= meta.size()) {
-												if (blockOffset + blockLength > meta.size()) {
-													throw new IllegalStateException("Overflowed data size");
+											if (meta.size() != -1) {
+												if (blockOffset + blockLength >= meta.size()) {
+													if (blockOffset + blockLength > meta.size()) {
+														throw new IllegalStateException("Overflowed data size");
+													}
+												} else {
+													// Intermediate blocks must be of max size
+													assert data.readableBytes() == BLOCK_SIZE;
 												}
-											} else {
-												// Intermediate blocks must be of max size
-												assert data.readableBytes() == BLOCK_SIZE;
 											}
 											return new DataBlock(blockOffset, blockLength, data.retain());
 										} finally {

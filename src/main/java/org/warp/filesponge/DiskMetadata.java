@@ -47,9 +47,13 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 		return downloadedFullyVal;
 	}
 
+	@SuppressWarnings("UnusedReturnValue")
 	private int getBlocksCount() {
+		if (size == -1) {
+			return downloadedBlocks().size();
+		}
 		var expectedBlocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
-		if (this.downloadedBlocks.size() != expectedBlocksCount) {
+		if (this.downloadedBlocks().size() != expectedBlocksCount) {
 			throw new IllegalStateException(
 					"Blocks array length (" + this.downloadedBlocks().size() + ") != expected blocks count ("
 							+ expectedBlocksCount + ")");
@@ -58,11 +62,22 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 	}
 
 	public static int getBlocksCount(int size, int blockSize) {
+		if (size == -1) {
+			return 0;
+		}
 		return (size + (blockSize - size % blockSize)) / blockSize;
 	}
 
 	public Metadata asMetadata() {
 		return new Metadata(size);
+	}
+
+	public boolean isDownloadedBlock(int id) {
+		if (size == -1 && downloadedBlocks().size() <= id) {
+			return false;
+		} else {
+			return downloadedBlocks().getBoolean(id);
+		}
 	}
 
 	public static class DiskMetadataSerializer implements Serializer<DiskMetadata, ByteBuf> {
@@ -79,7 +94,12 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 				var bais = new ByteBufInputStream(serialized);
 				var dis = new DataInputStream(bais);
 				int size = dis.readInt();
-				int blocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
+				int blocksCount;
+				if (size == -1) {
+					blocksCount = dis.readShort();
+				} else {
+					blocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
+				}
 				var downloadedBlocks = new BooleanArrayList(blocksCount);
 				for (int i = 0; i < blocksCount; i++) {
 					downloadedBlocks.add(dis.readBoolean());
@@ -98,8 +118,12 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 			try (var bos = new ByteBufOutputStream(buffer)) {
 				try (var dos = new DataOutputStream(bos)) {
 					dos.writeInt(deserialized.size());
-					deserialized.getBlocksCount();
-					for (boolean downloadedBlock : deserialized.downloadedBlocks) {
+					if (deserialized.size == -1) {
+						dos.writeShort(deserialized.getBlocksCount());
+					} else {
+						deserialized.getBlocksCount();
+					}
+					for (boolean downloadedBlock : deserialized.downloadedBlocks()) {
 						dos.writeBoolean(downloadedBlock);
 					}
 				}
