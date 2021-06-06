@@ -57,10 +57,9 @@ public class FileSponge implements URLsHandler {
 	public Flux<DataBlock> requestContent(URL url) {
 		AtomicBoolean alreadyPrintedDebug = new AtomicBoolean(false);
 		return Flux
-				.fromIterable(cacheAccess)
+				.fromStream(cacheAccess::stream)
 				.map(urlsHandler -> urlsHandler.requestContent(url))
 				.collectList()
-				.doOnDiscard(DataBlock.class, DataBlock::release)
 				.flatMapMany(monos -> FileSpongeUtils.firstWithValueFlux(monos))
 				.doOnNext(dataBlock -> {
 					if (alreadyPrintedDebug.compareAndSet(false, true)) {
@@ -68,33 +67,34 @@ public class FileSponge implements URLsHandler {
 					}
 				})
 				.switchIfEmpty(Flux
-						.fromIterable(urlsHandlers)
+						.fromStream(urlsHandlers::stream)
 						.doOnSubscribe(s -> logger.debug("Downloading file \"{}\" content", url))
 						.map(urlsHandler -> urlsHandler
 								.requestContent(url)
 								.flatMapSequential(dataBlock -> Flux
-										.fromIterable(cacheWrite)
+										.fromStream(cacheWrite::stream)
 										.flatMapSequential(cw -> cw.writeContentBlock(url, dataBlock))
 										.then(Mono.just(dataBlock))
 								)
 						)
 						.collectList()
-						.doOnDiscard(Flux.class, f -> {
-							//noinspection unchecked
-							Flux<DataBlock> flux = (Flux<DataBlock>) f;
-							flux.doOnNext(DataBlock::release).subscribeOn(Schedulers.single()).subscribe();
-						})
 						.flatMapMany(monos -> FileSpongeUtils.firstWithValueFlux(monos))
 						.doOnComplete(() -> logger.debug("Downloaded file \"{}\" content", url))
 				)
 				.distinct(DataBlock::getId)
-				.doOnDiscard(DataBlock.class, DataBlock::release);
+
+				.doOnDiscard(DataBlock.class, DataBlock::release)
+				.doOnDiscard(Flux.class, f -> {
+					//noinspection unchecked
+					Flux<DataBlock> flux = (Flux<DataBlock>) f;
+					flux.doOnNext(DataBlock::release).subscribeOn(Schedulers.single()).subscribe();
+				});
 	}
 
 	@Override
 	public Mono<Metadata> requestMetadata(URL url) {
 		return Flux
-				.fromIterable(cacheAccess)
+				.fromStream(cacheAccess::stream)
 				.map(urlsHandler -> urlsHandler.requestMetadata(url))
 				.collectList()
 				.flatMap(monos -> FileSpongeUtils.firstWithValueMono(monos))
@@ -104,12 +104,12 @@ public class FileSponge implements URLsHandler {
 					}
 				})
 				.switchIfEmpty(Flux
-						.fromIterable(urlsHandlers)
+						.fromStream(urlsHandlers::stream)
 						.doOnSubscribe(s -> logger.debug("Downloading file \"{}\" metadata", url))
 						.map(urlsHandler -> urlsHandler
 								.requestMetadata(url)
 								.flatMap(dataBlock -> Flux
-										.fromIterable(cacheWrite)
+										.fromStream(cacheWrite::stream)
 										.flatMapSequential(cw -> cw.writeMetadata(url, dataBlock))
 										.then(Mono.just(dataBlock))
 								)

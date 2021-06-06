@@ -153,7 +153,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 	public Flux<DataBlock> requestContent(URL url) {
 		return requestDiskMetadata(url)
 				.filter(DiskMetadata::isDownloadedFully)
-				.flatMapMany(meta -> Flux.fromIterable(meta.downloadedBlocks())
+				.flatMapMany(meta -> Flux.fromStream(meta.downloadedBlocks()::stream)
 						.index()
 						// Get only downloaded blocks
 						.filter(Tuple2::getT2)
