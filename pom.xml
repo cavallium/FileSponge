@@ -114,7 +114,7 @@
       <dependency>
         <groupId>it.cavallium</groupId>
         <artifactId>dbengine</artifactId>
-        <version>3.0.169</version>
+        <version>3.0.172</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

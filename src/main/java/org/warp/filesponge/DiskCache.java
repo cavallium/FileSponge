@@ -36,6 +36,7 @@ import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.jetbrains.annotations.Nullable;
 import org.warp.filesponge.DiskMetadata.DiskMetadataSerializer;
@@ -62,7 +63,12 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 	public static Mono<DiskCache> open(LLDatabaseConnection databaseConnection, String dbName, boolean lowMemory) {
 		return databaseConnection
-				.getDatabase(dbName, List.of(Column.dictionary("file-content"), Column.dictionary("file-metadata")), lowMemory, false)
+				.getDatabase(dbName,
+						List.of(Column.dictionary("file-content"), Column.dictionary("file-metadata")),
+						Map.of("enableColumnBug", "true"),
+						lowMemory,
+						false
+				)
 				.flatMap(db -> Mono.zip(
 						Mono.just(db).single(),
 						db.getDictionary("file-content", UpdateMode.ALLOW).single(),
