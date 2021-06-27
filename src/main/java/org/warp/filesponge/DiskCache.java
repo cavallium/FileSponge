@@ -32,6 +32,7 @@ import it.cavallium.dbengine.database.LLDictionaryResultType;
 import it.cavallium.dbengine.database.LLKeyValueDatabase;
 import it.cavallium.dbengine.database.UpdateMode;
 import it.cavallium.dbengine.database.UpdateReturnMode;
+import it.cavallium.dbengine.database.disk.DatabaseOptions;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -61,13 +62,13 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 		this.diskMetadataSerializer = new DiskMetadataSerializer(db.getAllocator());
 	}
 
-	public static Mono<DiskCache> open(LLDatabaseConnection databaseConnection, String dbName, boolean lowMemory) {
+	public static Mono<DiskCache> open(LLDatabaseConnection databaseConnection,
+			String dbName,
+			DatabaseOptions databaseOptions) {
 		return databaseConnection
 				.getDatabase(dbName,
 						List.of(Column.dictionary("file-content"), Column.dictionary("file-metadata")),
-						Map.of("enableColumnBug", "true"),
-						lowMemory,
-						false
+						databaseOptions
 				)
 				.flatMap(db -> Mono.zip(
 						Mono.just(db).single(),
