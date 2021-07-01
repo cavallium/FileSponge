@@ -20,9 +20,7 @@ package org.warp.filesponge;
 
 import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 
-import com.google.common.primitives.Ints;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCounted;
 import it.cavallium.dbengine.database.Column;
@@ -32,13 +30,9 @@ import it.cavallium.dbengine.database.LLDictionaryResultType;
 import it.cavallium.dbengine.database.LLKeyValueDatabase;
 import it.cavallium.dbengine.database.UpdateMode;
 import it.cavallium.dbengine.database.UpdateReturnMode;
-import it.cavallium.dbengine.database.disk.DatabaseOptions;
+import it.cavallium.dbengine.client.DatabaseOptions;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import org.jetbrains.annotations.Nullable;
 import org.warp.filesponge.DiskMetadata.DiskMetadataSerializer;
 import reactor.core.publisher.Flux;
