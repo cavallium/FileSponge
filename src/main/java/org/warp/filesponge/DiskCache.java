@@ -31,6 +31,7 @@ import it.cavallium.dbengine.database.LLKeyValueDatabase;
 import it.cavallium.dbengine.database.UpdateMode;
 import it.cavallium.dbengine.database.UpdateReturnMode;
 import it.cavallium.dbengine.client.DatabaseOptions;
+import it.cavallium.dbengine.database.serialization.SerializationException;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -177,7 +178,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 				);
 	}
 
-	private ByteBuf getBlockKey(URL url, int blockId) {
+	private ByteBuf getBlockKey(URL url, int blockId) throws SerializationException {
 		ByteBuf urlBytes = url.getSerializer(db.getAllocator()).serialize(url);
 		ByteBuf blockIdBytes = this.db.getAllocator().directBuffer(Integer.BYTES, Integer.BYTES);
 		blockIdBytes.writeInt(blockId);
