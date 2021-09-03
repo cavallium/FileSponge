@@ -23,6 +23,11 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.api.Buffer;
+import io.netty.buffer.api.BufferAllocator;
+import io.netty.buffer.api.Send;
+import it.cavallium.dbengine.database.serialization.BufferDataInput;
+import it.cavallium.dbengine.database.serialization.BufferDataOutput;
 import it.cavallium.dbengine.database.serialization.Serializer;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.io.ByteArrayInputStream;
@@ -80,56 +85,45 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 		}
 	}
 
-	public static class DiskMetadataSerializer implements Serializer<DiskMetadata, ByteBuf> {
+	public static class DiskMetadataSerializer implements Serializer<DiskMetadata> {
 
-		private final ByteBufAllocator allocator;
+		private final BufferAllocator allocator;
 
-		public DiskMetadataSerializer(ByteBufAllocator allocator) {
+		public DiskMetadataSerializer(BufferAllocator allocator) {
 			this.allocator = allocator;
 		}
 
 		@Override
-		public @NotNull DiskMetadata deserialize(@NotNull ByteBuf serialized) {
-			try {
-				var bais = new ByteBufInputStream(serialized);
-				var dis = new DataInputStream(bais);
-				int size = dis.readInt();
-				int blocksCount;
-				if (size == -1) {
-					blocksCount = dis.readShort();
-				} else {
-					blocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
-				}
-				var downloadedBlocks = new BooleanArrayList(blocksCount);
-				for (int i = 0; i < blocksCount; i++) {
-					downloadedBlocks.add(dis.readBoolean());
-				}
-				return new DiskMetadata(size, downloadedBlocks);
-			} catch (IOException e) {
-				throw new SerializationException(e);
-			} finally {
-				serialized.release();
+		public @NotNull DeserializationResult<DiskMetadata> deserialize(@NotNull Send<Buffer> serialized) {
+			var dis = new BufferDataInput(serialized);
+			int size = dis.readInt();
+			int blocksCount;
+			if (size == -1) {
+				blocksCount = dis.readShort();
+			} else {
+				blocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
 			}
+			var downloadedBlocks = new BooleanArrayList(blocksCount);
+			for (int i = 0; i < blocksCount; i++) {
+				downloadedBlocks.add(dis.readBoolean());
+			}
+			return new DeserializationResult<>(new DiskMetadata(size, downloadedBlocks), dis.getReadBytesCount());
 		}
 
 		@Override
-		public @NotNull ByteBuf serialize(@NotNull DiskMetadata deserialized) {
-			ByteBuf buffer = allocator.buffer();
-			try (var bos = new ByteBufOutputStream(buffer)) {
-				try (var dos = new DataOutputStream(bos)) {
-					dos.writeInt(deserialized.size());
-					if (deserialized.size == -1) {
-						dos.writeShort(deserialized.getBlocksCount());
-					} else {
-						deserialized.getBlocksCount();
-					}
-					for (boolean downloadedBlock : deserialized.downloadedBlocks()) {
-						dos.writeBoolean(downloadedBlock);
-					}
+		public @NotNull Send<Buffer> serialize(@NotNull DiskMetadata deserialized) {
+			try (var buffer = allocator.allocate(64)) {
+				var dos = new BufferDataOutput(buffer);
+				dos.writeInt(deserialized.size());
+				if (deserialized.size == -1) {
+					dos.writeShort(deserialized.getBlocksCount());
+				} else {
+					deserialized.getBlocksCount();
 				}
-				return buffer;
-			} catch (IOException e) {
-				throw new SerializationException(e);
+				for (boolean downloadedBlock : deserialized.downloadedBlocks()) {
+					dos.writeBoolean(downloadedBlock);
+				}
+				return buffer.send();
 			}
 		}
 

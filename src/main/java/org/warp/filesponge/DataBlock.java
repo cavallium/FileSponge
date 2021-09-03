@@ -19,27 +19,40 @@
 package org.warp.filesponge;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.api.Buffer;
+import io.netty.buffer.api.Drop;
+import io.netty.buffer.api.Owned;
+import io.netty.buffer.api.Send;
+import io.netty.buffer.api.internal.ResourceSupport;
+import it.cavallium.dbengine.database.LLEntry;
 import java.util.Objects;
 
-public final class DataBlock {
+public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 
-	public DataBlock(int offset, int length, ByteBuf data) {
-		try {
+	public static DataBlock of(int offset, int length, Send<Buffer> data) {
+		return new DataBlock(offset, length, data, d -> {});
+	}
+
+	private DataBlock(int offset, int length, Send<Buffer> data, Drop<DataBlock> drop) {
+		super(new DataBlock.CloseOnDrop(drop));
+		try (data) {
 			this.offset = offset;
 			this.length = length;
-			this.data = data.retain();
-		} finally {
-			data.release();
+			this.data = data.receive();
 		}
 	}
 
 	private final int offset;
 	private final int length;
-	private final ByteBuf data;
+	private final Buffer data;
 
-	public ByteBuf getData() {
-		assert data.isReadable();
-		return data.retain();
+	public Send<Buffer> getData() {
+		assert data.isAccessible();
+		return data.copy().send();
+	}
+
+	public Buffer getDataUnsafe() {
+		return data;
 	}
 
 	public int getId() {
@@ -90,11 +103,32 @@ public final class DataBlock {
 		return "DataBlock(offset=" + this.getOffset() + ", length=" + this.getLength() + ", data=" + this.getData() + ")";
 	}
 
-	public void retain() {
-		this.data.retain();
+	@Override
+	protected RuntimeException createResourceClosedException() {
+		return new IllegalStateException("Closed");
 	}
 
-	public void release() {
-		this.data.release();
+	@Override
+	protected Owned<DataBlock> prepareSend() {
+		Send<Buffer> dataSend;
+		dataSend = this.data.send();
+		return drop -> new DataBlock(offset, length, dataSend, drop);
+	}
+
+	private static class CloseOnDrop implements Drop<DataBlock> {
+
+		private final Drop<DataBlock> delegate;
+
+		public CloseOnDrop(Drop<DataBlock> drop) {
+			this.delegate = drop;
+		}
+
+		@Override
+		public void drop(DataBlock obj) {
+			if (obj.data.isAccessible()) {
+				obj.data.close();
+			}
+			delegate.drop(obj);
+		}
 	}
 }

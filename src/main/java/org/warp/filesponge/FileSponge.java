@@ -101,7 +101,7 @@ public class FileSponge implements URLsHandler {
 				)
 				.distinct(DataBlock::getId)
 
-				.doOnDiscard(DataBlock.class, DataBlock::release);
+				.doOnDiscard(DataBlock.class, DataBlock::close);
 	}
 
 	@Override

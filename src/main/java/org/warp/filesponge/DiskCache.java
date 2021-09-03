@@ -22,16 +22,21 @@ import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.buffer.api.Buffer;
+import io.netty.buffer.api.CompositeBuffer;
+import io.netty.buffer.api.Send;
 import io.netty.util.ReferenceCounted;
 import it.cavallium.dbengine.database.Column;
 import it.cavallium.dbengine.database.LLDatabaseConnection;
 import it.cavallium.dbengine.database.LLDictionary;
 import it.cavallium.dbengine.database.LLDictionaryResultType;
 import it.cavallium.dbengine.database.LLKeyValueDatabase;
+import it.cavallium.dbengine.database.LLUtils;
 import it.cavallium.dbengine.database.UpdateMode;
 import it.cavallium.dbengine.database.UpdateReturnMode;
 import it.cavallium.dbengine.client.DatabaseOptions;
 import it.cavallium.dbengine.database.serialization.SerializationException;
+import it.cavallium.dbengine.database.serialization.Serializer.DeserializationResult;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -77,7 +82,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 	@Override
 	public Mono<Void> writeMetadata(URL url, Metadata metadata) {
-		Mono<ByteBuf> keyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
+		Mono<Send<Buffer>> keyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
 		return fileMetadata
 				.update(keyMono, oldValue -> Objects.requireNonNullElseGet(oldValue,
 						() -> diskMetadataSerializer.serialize(new DiskMetadata(metadata.size(),
@@ -89,22 +94,23 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 	@Override
 	public Mono<Void> writeContentBlock(URL url, DataBlock dataBlock) {
-		Mono<ByteBuf> urlKeyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
-		Mono<ByteBuf> blockKeyMono = Mono.fromCallable(() -> getBlockKey(url, dataBlock.getId()));
+		Mono<Send<Buffer>> urlKeyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
+		Mono<Send<Buffer>> blockKeyMono = Mono.fromCallable(() -> getBlockKey(url, dataBlock.getId()));
 		return Mono
 				.fromCallable(dataBlock::getData)
 				.subscribeOn(Schedulers.boundedElastic())
-				.flatMap(bytes -> {
-					Mono<ByteBuf> bytesMono = Mono.just(bytes).map(ByteBuf::retain);
-					return fileContent
-							.put(blockKeyMono, bytesMono, LLDictionaryResultType.VOID)
-							.doOnNext(ReferenceCounted::release)
-							.then();
-				})
+				.flatMap(bytes_ -> Mono.using(
+						() -> bytes_,
+						bytes -> fileContent
+								.put(blockKeyMono, Mono.just(bytes), LLDictionaryResultType.VOID)
+								.doOnNext(Send::close)
+								.then(),
+						Send::close
+				))
 				.then(fileMetadata.update(urlKeyMono, prevBytes -> {
 							@Nullable DiskMetadata result;
 							if (prevBytes != null) {
-								DiskMetadata prevMeta = diskMetadataSerializer.deserialize(prevBytes);
+								DiskMetadata prevMeta = diskMetadataSerializer.deserialize(prevBytes).deserializedData();
 								if (!prevMeta.isDownloadedBlock(dataBlock.getId())) {
 									BooleanArrayList bal = prevMeta.downloadedBlocks().clone();
 									if (prevMeta.size() == -1) {
@@ -152,11 +158,11 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 							if (!downloaded) {
 								return Mono.empty();
 							}
-							Mono<ByteBuf> blockKeyMono = Mono.fromCallable(() -> getBlockKey(url, blockId));
+							var blockKeyMono = Mono.fromCallable(() -> getBlockKey(url, blockId));
 							return fileContent
 									.get(null, blockKeyMono)
-									.map(data -> {
-										try {
+									.map(dataToReceive -> {
+										try (var data = dataToReceive.receive()) {
 											int blockOffset = getBlockOffset(blockId);
 											int blockLength = data.readableBytes();
 											if (meta.size() != -1) {
@@ -169,20 +175,19 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 													assert data.readableBytes() == BLOCK_SIZE;
 												}
 											}
-											return new DataBlock(blockOffset, blockLength, data.retain());
-										} finally {
-											data.release();
+											return DataBlock.of(blockOffset, blockLength, data.send());
 										}
 									});
 						})
 				);
 	}
 
-	private ByteBuf getBlockKey(URL url, int blockId) throws SerializationException {
-		ByteBuf urlBytes = url.getSerializer(db.getAllocator()).serialize(url);
-		ByteBuf blockIdBytes = this.db.getAllocator().directBuffer(Integer.BYTES, Integer.BYTES);
-		blockIdBytes.writeInt(blockId);
-		return Unpooled.wrappedBuffer(urlBytes, blockIdBytes);
+	private Send<Buffer> getBlockKey(URL url, int blockId) throws SerializationException {
+		try (var urlBytes = url.getSerializer(db.getAllocator()).serialize(url).receive()) {
+			Buffer blockIdBytes = this.db.getAllocator().allocate(Integer.BYTES);
+			blockIdBytes.writeInt(blockId);
+			return LLUtils.compositeBuffer(db.getAllocator(), urlBytes.send(), blockIdBytes.send());
+		}
 	}
 
 	private static int getBlockOffset(int blockId) {
@@ -191,10 +196,11 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 	@Override
 	public Mono<DiskMetadata> requestDiskMetadata(URL url) {
-		Mono<ByteBuf> urlKeyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
+		Mono<Send<Buffer>> urlKeyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
 		return fileMetadata
 				.get(null, urlKeyMono)
-				.map(diskMetadataSerializer::deserialize);
+				.map(diskMetadataSerializer::deserialize)
+				.map(DeserializationResult::deserializedData);
 	}
 
 	@Override
@@ -205,14 +211,15 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 	@Override
 	public Mono<Tuple2<Metadata, Flux<DataBlock>>> request(URL url) {
-		Mono<ByteBuf> urlKeyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
+		Mono<Send<Buffer>> urlKeyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
 		return Mono
 				.using(
 						() -> url.getSerializer(db.getAllocator()).serialize(url),
 						key -> fileMetadata.get(null, urlKeyMono),
-						ReferenceCounted::release
+						Send::close
 				)
 				.map(diskMetadataSerializer::deserialize)
+				.map(DeserializationResult::deserializedData)
 				.map(diskMeta -> {
 					var meta = diskMeta.asMetadata();
 					if (diskMeta.isDownloadedFully()) {
