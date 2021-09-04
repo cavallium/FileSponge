@@ -18,24 +18,13 @@
 
 package org.warp.filesponge;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufInputStream;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.api.Buffer;
-import io.netty.buffer.api.BufferAllocator;
-import io.netty.buffer.api.Send;
+import io.netty5.buffer.api.Buffer;
+import io.netty5.buffer.api.BufferAllocator;
+import io.netty5.buffer.api.Send;
 import it.cavallium.dbengine.database.serialization.BufferDataInput;
 import it.cavallium.dbengine.database.serialization.BufferDataOutput;
 import it.cavallium.dbengine.database.serialization.Serializer;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import org.apache.commons.lang3.SerializationException;
 import org.jetbrains.annotations.NotNull;
 
 /**

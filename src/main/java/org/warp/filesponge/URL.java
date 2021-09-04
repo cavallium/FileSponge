@@ -18,9 +18,7 @@
 
 package org.warp.filesponge;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.api.BufferAllocator;
+import io.netty5.buffer.api.BufferAllocator;
 import it.cavallium.dbengine.database.serialization.Serializer;
 
 public interface URL {

@@ -18,13 +18,11 @@
 
 package org.warp.filesponge;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.api.Buffer;
-import io.netty.buffer.api.Drop;
-import io.netty.buffer.api.Owned;
-import io.netty.buffer.api.Send;
-import io.netty.buffer.api.internal.ResourceSupport;
-import it.cavallium.dbengine.database.LLEntry;
+import io.netty5.buffer.api.Buffer;
+import io.netty5.buffer.api.Drop;
+import io.netty5.buffer.api.Owned;
+import io.netty5.buffer.api.Send;
+import io.netty5.buffer.api.internal.ResourceSupport;
 import java.util.Objects;
 
 public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
