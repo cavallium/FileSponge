@@ -214,9 +214,9 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 						key -> fileMetadata.get(null, urlKeyMono),
 						Send::close
 				)
-				.map(diskMetadataSerializer::deserialize)
-				.map(DeserializationResult::deserializedData)
-				.map(diskMeta -> {
+				.map(serialized -> {
+					var diskMetadataDeserializationResult = diskMetadataSerializer.deserialize(serialized);
+					var diskMeta = diskMetadataDeserializationResult.deserializedData();
 					var meta = diskMeta.asMetadata();
 					if (diskMeta.isDownloadedFully()) {
 						return Tuples.of(meta, this.requestContent(url));
