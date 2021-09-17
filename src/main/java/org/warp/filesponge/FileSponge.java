@@ -61,7 +61,7 @@ public class FileSponge implements URLsHandler {
 		return Mono
 				.<Void>fromRunnable(() -> {
 					synchronized (structuresLock) {
-						var cacheAccessClone = cacheAccess.clone();
+						var cacheAccessClone = this.cacheAccess.clone();
 						cacheAccessClone.add(urlsCache);
 						this.cacheAccess = cacheAccessClone;
 
@@ -78,8 +78,9 @@ public class FileSponge implements URLsHandler {
 		AtomicBoolean alreadyPrintedDebug = new AtomicBoolean(false);
 		return Mono
 				.fromCallable(() -> {
-					List<Flux<DataBlock>> contentRequests = new ArrayList<>(cacheAccess.size());
-					for (URLsDiskHandler urlsHandler : cacheAccess) {
+					var ca = this.cacheAccess;
+					List<Flux<DataBlock>> contentRequests = new ArrayList<>(ca.size());
+					for (URLsDiskHandler urlsHandler : ca) {
 						contentRequests.add(urlsHandler.requestContent(url));
 					}
 					return contentRequests;
@@ -93,13 +94,15 @@ public class FileSponge implements URLsHandler {
 				.switchIfEmpty(Mono
 						.fromCallable(() -> {
 							logger.debug("Downloading file \"{}\" content", url);
-							List<Flux<DataBlock>> contentRequestsAndCaching = new ArrayList<>(urlsHandlers.size());
-							for (URLsHandler urlsHandler : urlsHandlers) {
+							var uh = this.urlsHandlers;
+							List<Flux<DataBlock>> contentRequestsAndCaching = new ArrayList<>(uh.size());
+							for (URLsHandler urlsHandler : uh) {
 								contentRequestsAndCaching.add(urlsHandler
 										.requestContent(url)
 										.flatMapSequential(dataBlock -> {
-											List<Mono<Void>> cacheWriteActions = new ArrayList<>(cacheWrite.size());
-											for (URLsWriter urlsWriter : cacheWrite) {
+											var cw = this.cacheWrite;
+											List<Mono<Void>> cacheWriteActions = new ArrayList<>(cw.size());
+											for (URLsWriter urlsWriter : cw) {
 												cacheWriteActions.add(urlsWriter.writeContentBlock(url, dataBlock));
 											}
 											return Mono.when(cacheWriteActions).thenReturn(dataBlock);
@@ -120,8 +123,9 @@ public class FileSponge implements URLsHandler {
 	public Mono<Metadata> requestMetadata(URL url) {
 		return Mono
 				.fromCallable(() -> {
-					List<Mono<Metadata>> metadataRequests = new ArrayList<>(cacheAccess.size());
-					for (URLsDiskHandler urlsHandler : cacheAccess) {
+					var ca = this.cacheAccess;
+					List<Mono<Metadata>> metadataRequests = new ArrayList<>(ca.size());
+					for (URLsDiskHandler urlsHandler : ca) {
 						metadataRequests.add(urlsHandler.requestMetadata(url));
 					}
 					return metadataRequests;
@@ -135,13 +139,15 @@ public class FileSponge implements URLsHandler {
 				.switchIfEmpty(Mono
 						.fromCallable(() -> {
 							logger.debug("Downloading file \"{}\" metadata", url);
-							List<Mono<Metadata>> metadataRequestsAndCaching = new ArrayList<>(urlsHandlers.size());
-							for (URLsHandler urlsHandler : urlsHandlers) {
+							var uh = this.urlsHandlers;
+							List<Mono<Metadata>> metadataRequestsAndCaching = new ArrayList<>(uh.size());
+							for (URLsHandler urlsHandler : uh) {
 								metadataRequestsAndCaching.add(urlsHandler
 										.requestMetadata(url)
 										.flatMap(meta -> {
-											List<Mono<Void>> cacheWriteActions = new ArrayList<>(cacheWrite.size());
-											for (URLsWriter urlsWriter : cacheWrite) {
+											var cw = this.cacheWrite;
+											List<Mono<Void>> cacheWriteActions = new ArrayList<>(cw.size());
+											for (URLsWriter urlsWriter : cw) {
 												cacheWriteActions.add(urlsWriter.writeMetadata(url, meta));
 											}
 											return Mono.when(cacheWriteActions).thenReturn(meta);
