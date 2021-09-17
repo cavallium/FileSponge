@@ -18,9 +18,9 @@
 
 package org.warp.filesponge;
 
-import io.netty5.buffer.api.Buffer;
-import io.netty5.buffer.api.BufferAllocator;
-import io.netty5.buffer.api.Send;
+import io.net5.buffer.api.Buffer;
+import io.net5.buffer.api.BufferAllocator;
+import io.net5.buffer.api.Send;
 import it.cavallium.dbengine.database.serialization.BufferDataInput;
 import it.cavallium.dbengine.database.serialization.BufferDataOutput;
 import it.cavallium.dbengine.database.serialization.Serializer;

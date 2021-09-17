@@ -18,11 +18,11 @@
 
 package org.warp.filesponge;
 
-import io.netty5.buffer.api.Buffer;
-import io.netty5.buffer.api.Drop;
-import io.netty5.buffer.api.Owned;
-import io.netty5.buffer.api.Send;
-import io.netty5.buffer.api.internal.ResourceSupport;
+import io.net5.buffer.api.Buffer;
+import io.net5.buffer.api.Drop;
+import io.net5.buffer.api.Owned;
+import io.net5.buffer.api.Send;
+import io.net5.buffer.api.internal.ResourceSupport;
 import java.util.Objects;
 
 public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
