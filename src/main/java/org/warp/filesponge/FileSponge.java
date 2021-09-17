@@ -19,6 +19,8 @@
 package org.warp.filesponge;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -74,28 +76,38 @@ public class FileSponge implements URLsHandler {
 	@Override
 	public Flux<DataBlock> requestContent(URL url) {
 		AtomicBoolean alreadyPrintedDebug = new AtomicBoolean(false);
-		return Flux
-				.defer(() -> Flux.fromIterable(cacheAccess))
-				.map(urlsHandler -> urlsHandler.requestContent(url))
-				.collectList()
+		return Mono
+				.fromCallable(() -> {
+					List<Flux<DataBlock>> contentRequests = new ArrayList<>(cacheAccess.size());
+					for (URLsDiskHandler urlsHandler : cacheAccess) {
+						contentRequests.add(urlsHandler.requestContent(url));
+					}
+					return contentRequests;
+				})
 				.flatMapMany(FileSpongeUtils::firstWithValueFlux)
 				.doOnNext(dataBlock -> {
 					if (alreadyPrintedDebug.compareAndSet(false, true)) {
 						logger.debug("File \"{}\" content has been found in the cache", url);
 					}
 				})
-				.switchIfEmpty(Flux
-						.defer(() -> Flux.fromIterable(urlsHandlers))
-						.doOnSubscribe(s -> logger.debug("Downloading file \"{}\" content", url))
-						.map(urlsHandler -> urlsHandler
-								.requestContent(url)
-								.flatMapSequential(dataBlock -> Flux
-										.defer(() -> Flux.fromIterable(cacheWrite))
-										.flatMapSequential(cw -> cw.writeContentBlock(url, dataBlock))
-										.then(Mono.just(dataBlock))
-								)
-						)
-						.collectList()
+				.switchIfEmpty(Mono
+						.fromCallable(() -> {
+							logger.debug("Downloading file \"{}\" content", url);
+							List<Flux<DataBlock>> contentRequestsAndCaching = new ArrayList<>(urlsHandlers.size());
+							for (URLsHandler urlsHandler : urlsHandlers) {
+								contentRequestsAndCaching.add(urlsHandler
+										.requestContent(url)
+										.flatMapSequential(dataBlock -> {
+											List<Mono<Void>> cacheWriteActions = new ArrayList<>(cacheWrite.size());
+											for (URLsWriter urlsWriter : cacheWrite) {
+												cacheWriteActions.add(urlsWriter.writeContentBlock(url, dataBlock));
+											}
+											return Mono.when(cacheWriteActions).thenReturn(dataBlock);
+										})
+								);
+							}
+							return contentRequestsAndCaching;
+						})
 						.flatMapMany(FileSpongeUtils::firstWithValueFlux)
 						.doOnComplete(() -> logger.debug("Downloaded file \"{}\" content", url))
 				)
@@ -106,28 +118,38 @@ public class FileSponge implements URLsHandler {
 
 	@Override
 	public Mono<Metadata> requestMetadata(URL url) {
-		return Flux
-				.defer(() -> Flux.fromIterable(cacheAccess))
-				.map(urlsHandler -> urlsHandler.requestMetadata(url))
-				.collectList()
+		return Mono
+				.fromCallable(() -> {
+					List<Mono<Metadata>> metadataRequests = new ArrayList<>(cacheAccess.size());
+					for (URLsDiskHandler urlsHandler : cacheAccess) {
+						metadataRequests.add(urlsHandler.requestMetadata(url));
+					}
+					return metadataRequests;
+				})
 				.flatMap(FileSpongeUtils::firstWithValueMono)
 				.doOnSuccess(metadata -> {
 					if (metadata != null) {
 						logger.debug("File \"{}\" metadata has been found in the cache", url);
 					}
 				})
-				.switchIfEmpty(Flux
-						.defer(() -> Flux.fromIterable(urlsHandlers))
-						.doOnSubscribe(s -> logger.debug("Downloading file \"{}\" metadata", url))
-						.map(urlsHandler -> urlsHandler
-								.requestMetadata(url)
-								.flatMap(dataBlock -> Flux
-										.defer(() -> Flux.fromIterable(cacheWrite))
-										.flatMapSequential(cw -> cw.writeMetadata(url, dataBlock))
-										.then(Mono.just(dataBlock))
-								)
-						)
-						.collectList()
+				.switchIfEmpty(Mono
+						.fromCallable(() -> {
+							logger.debug("Downloading file \"{}\" metadata", url);
+							List<Mono<Metadata>> metadataRequestsAndCaching = new ArrayList<>(urlsHandlers.size());
+							for (URLsHandler urlsHandler : urlsHandlers) {
+								metadataRequestsAndCaching.add(urlsHandler
+										.requestMetadata(url)
+										.flatMap(meta -> {
+											List<Mono<Void>> cacheWriteActions = new ArrayList<>(cacheWrite.size());
+											for (URLsWriter urlsWriter : cacheWrite) {
+												cacheWriteActions.add(urlsWriter.writeMetadata(url, meta));
+											}
+											return Mono.when(cacheWriteActions).thenReturn(meta);
+										})
+								);
+							}
+							return metadataRequestsAndCaching;
+						})
 						.flatMap(FileSpongeUtils::firstWithValueMono)
 						.doOnSuccess(s -> {
 							if (s != null) {
