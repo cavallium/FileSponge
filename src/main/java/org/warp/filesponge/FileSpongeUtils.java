@@ -37,11 +37,11 @@ public class FileSpongeUtils {
 	private static final Logger logger = LoggerFactory.getLogger(FileSponge.class);
 
 	public static <T> Mono<T> firstWithValueMono(List<Mono<T>> monos) {
-		return Mono.firstWithValue(monos).doOnError(ex -> {}).onErrorResume(FileSpongeUtils::ignoreFakeErrors);
+		return Mono.firstWithValue(monos).onErrorResume(FileSpongeUtils::ignoreFakeErrors);
 	}
 
 	public static <T> Flux<T> firstWithValueFlux(List<Flux<T>> monos) {
-		return Flux.firstWithValue(monos).doOnError(ex -> {}).onErrorResume(FileSpongeUtils::ignoreFakeErrors);
+		return Flux.firstWithValue(monos).onErrorResume(FileSpongeUtils::ignoreFakeErrors);
 	}
 
 	private static <T> Mono<T> ignoreFakeErrors(Throwable ex) {
