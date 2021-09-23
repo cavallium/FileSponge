@@ -182,7 +182,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 		try (var urlBytes = url.getSerializer(db.getAllocator()).serialize(url).receive()) {
 			Buffer blockIdBytes = this.db.getAllocator().allocate(Integer.BYTES);
 			blockIdBytes.writeInt(blockId);
-			return LLUtils.compositeBuffer(db.getAllocator(), urlBytes.send(), blockIdBytes.send());
+			return LLUtils.compositeBuffer(db.getAllocator(), urlBytes.send(), blockIdBytes.send()).send();
 		}
 	}
 
