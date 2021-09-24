@@ -23,6 +23,7 @@ import io.net5.buffer.api.Drop;
 import io.net5.buffer.api.Owned;
 import io.net5.buffer.api.Send;
 import io.net5.buffer.api.internal.ResourceSupport;
+import it.cavallium.dbengine.database.collections.DatabaseSingle;
 import java.util.Objects;
 
 public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
@@ -118,7 +119,11 @@ public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 		private final Drop<DataBlock> delegate;
 
 		public CloseOnDrop(Drop<DataBlock> drop) {
-			this.delegate = drop;
+			if (drop instanceof CloseOnDrop closeOnDrop) {
+				this.delegate = closeOnDrop.delegate;
+			} else {
+				this.delegate = drop;
+			}
 		}
 
 		@Override
