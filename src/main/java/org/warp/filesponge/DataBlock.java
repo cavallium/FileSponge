@@ -23,17 +23,45 @@ import io.net5.buffer.api.Drop;
 import io.net5.buffer.api.Owned;
 import io.net5.buffer.api.Send;
 import io.net5.buffer.api.internal.ResourceSupport;
+import it.cavallium.dbengine.database.LLSearchResultShard;
 import it.cavallium.dbengine.database.collections.DatabaseSingle;
 import java.util.Objects;
+import org.warp.commonutils.log.Logger;
+import org.warp.commonutils.log.LoggerFactory;
 
 public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 
+	private static final Logger logger = LoggerFactory.getLogger(DataBlock.class);
+
+	private static final Drop<DataBlock> DROP = new Drop<>() {
+		@Override
+		public void drop(DataBlock obj) {
+			try {
+				if (obj.data != null) {
+					obj.data.close();
+				}
+			} catch (Throwable ex) {
+				logger.error("Failed to close data", ex);
+			}
+		}
+
+		@Override
+		public Drop<DataBlock> fork() {
+			return this;
+		}
+
+		@Override
+		public void attach(DataBlock obj) {
+
+		}
+	};
+
 	public static DataBlock of(int offset, int length, Send<Buffer> data) {
-		return new DataBlock(offset, length, data, d -> {});
+		return new DataBlock(offset, length, data);
 	}
 
-	private DataBlock(int offset, int length, Send<Buffer> data, Drop<DataBlock> drop) {
-		super(new DataBlock.CloseOnDrop(drop));
+	private DataBlock(int offset, int length, Send<Buffer> data) {
+		super(DROP);
 		try (data) {
 			this.offset = offset;
 			this.length = length;
@@ -111,27 +139,10 @@ public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 	protected Owned<DataBlock> prepareSend() {
 		Send<Buffer> dataSend;
 		dataSend = this.data.send();
-		return drop -> new DataBlock(offset, length, dataSend, drop);
-	}
-
-	private static class CloseOnDrop implements Drop<DataBlock> {
-
-		private final Drop<DataBlock> delegate;
-
-		public CloseOnDrop(Drop<DataBlock> drop) {
-			if (drop instanceof CloseOnDrop closeOnDrop) {
-				this.delegate = closeOnDrop.delegate;
-			} else {
-				this.delegate = drop;
-			}
-		}
-
-		@Override
-		public void drop(DataBlock obj) {
-			if (obj.data.isAccessible()) {
-				obj.data.close();
-			}
-			delegate.drop(obj);
-		}
+		return drop -> {
+			var instance = new DataBlock(offset, length, dataSend);
+			drop.attach(instance);
+			return instance;
+		};
 	}
 }
