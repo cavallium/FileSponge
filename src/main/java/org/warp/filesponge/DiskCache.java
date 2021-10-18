@@ -32,7 +32,6 @@ import it.cavallium.dbengine.database.UpdateMode;
 import it.cavallium.dbengine.database.UpdateReturnMode;
 import it.cavallium.dbengine.client.DatabaseOptions;
 import it.cavallium.dbengine.database.serialization.SerializationException;
-import it.cavallium.dbengine.database.serialization.Serializer.DeserializationResult;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -56,7 +55,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 		this.db = db;
 		this.fileContent = fileContent;
 		this.fileMetadata = fileMetadata;
-		this.diskMetadataSerializer = new DiskMetadataSerializer(db.getAllocator());
+		this.diskMetadataSerializer = new DiskMetadataSerializer();
 	}
 
 	public static Mono<DiskCache> open(LLDatabaseConnection databaseConnection,
@@ -78,19 +77,54 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 	@Override
 	public Mono<Void> writeMetadata(URL url, Metadata metadata) {
-		Mono<Send<Buffer>> keyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
+		Mono<Send<Buffer>> keyMono = Mono.fromCallable(() -> serializeUrl(url));
 		return fileMetadata
 				.update(keyMono, oldValue -> Objects.requireNonNullElseGet(oldValue,
-						() -> diskMetadataSerializer.serialize(new DiskMetadata(metadata.size(),
+						() -> serializeMetadata(new DiskMetadata(metadata.size(),
 								BooleanArrayList.wrap(new boolean[DiskMetadata.getBlocksCount(metadata.size(), BLOCK_SIZE)])
 						))
 				), UpdateReturnMode.NOTHING)
 				.then();
 	}
 
+	private Send<Buffer> serializeUrl(URL url) {
+		var urlSerializer = url.getSerializer();
+		int sizeHint = urlSerializer.getSerializedSizeHint();
+		if (sizeHint == -1) sizeHint = 64;
+		try (var buffer = db.getAllocator().allocate(sizeHint)) {
+			try {
+				urlSerializer.serialize(url, buffer);
+			} catch (SerializationException ex) {
+				throw new IllegalStateException("Failed to serialize url", ex);
+			}
+			return buffer.send();
+		}
+	}
+
+	private Send<Buffer> serializeMetadata(DiskMetadata diskMetadata) {
+		int sizeHint = diskMetadataSerializer.getSerializedSizeHint();
+		if (sizeHint == -1) sizeHint = 64;
+		try (var buffer = db.getAllocator().allocate(sizeHint)) {
+			try {
+				diskMetadataSerializer.serialize(diskMetadata, buffer);
+			} catch (SerializationException ex) {
+				throw new IllegalStateException("Failed to serialize metadata", ex);
+			}
+			return buffer.send();
+		}
+	}
+
+	private DiskMetadata deserializeMetadata(Send<Buffer> prevBytes) {
+		try (var prevBytesBuf = prevBytes.receive()) {
+			return diskMetadataSerializer.deserialize(prevBytesBuf);
+		} catch (SerializationException ex) {
+			throw new IllegalStateException("Failed to deserialize metadata", ex);
+		}
+	}
+
 	@Override
 	public Mono<Void> writeContentBlock(URL url, DataBlock dataBlock) {
-		Mono<Send<Buffer>> urlKeyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
+		Mono<Send<Buffer>> urlKeyMono = Mono.fromCallable(() -> serializeUrl(url));
 		Mono<Send<Buffer>> blockKeyMono = Mono.fromCallable(() -> getBlockKey(url, dataBlock.getId()));
 		return Mono
 				.fromCallable(dataBlock::getData)
@@ -106,7 +140,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 				.then(fileMetadata.update(urlKeyMono, prevBytes -> {
 							@Nullable DiskMetadata result;
 							if (prevBytes != null) {
-								DiskMetadata prevMeta = diskMetadataSerializer.deserialize(prevBytes).deserializedData();
+								DiskMetadata prevMeta = deserializeMetadata(prevBytes);
 								if (!prevMeta.isDownloadedBlock(dataBlock.getId())) {
 									BooleanArrayList bal = prevMeta.downloadedBlocks().clone();
 									if (prevMeta.size() == -1) {
@@ -130,7 +164,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 								result = null;
 							}
 							if (result != null) {
-								return diskMetadataSerializer.serialize(result);
+								return serializeMetadata(result);
 							} else {
 								return null;
 							}
@@ -178,8 +212,8 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 				);
 	}
 
-	private Send<Buffer> getBlockKey(URL url, int blockId) throws SerializationException {
-		try (var urlBytes = url.getSerializer(db.getAllocator()).serialize(url).receive()) {
+	private Send<Buffer> getBlockKey(URL url, int blockId) {
+		try (var urlBytes = serializeUrl(url).receive()) {
 			Buffer blockIdBytes = this.db.getAllocator().allocate(Integer.BYTES);
 			blockIdBytes.writeInt(blockId);
 			return LLUtils.compositeBuffer(db.getAllocator(), urlBytes.send(), blockIdBytes.send()).send();
@@ -192,11 +226,10 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 	@Override
 	public Mono<DiskMetadata> requestDiskMetadata(URL url) {
-		Mono<Send<Buffer>> urlKeyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
+		Mono<Send<Buffer>> urlKeyMono = Mono.fromCallable(() -> serializeUrl(url));
 		return fileMetadata
 				.get(null, urlKeyMono)
-				.map(diskMetadataSerializer::deserialize)
-				.map(DeserializationResult::deserializedData);
+				.map(this::deserializeMetadata);
 	}
 
 	@Override
@@ -207,16 +240,15 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 	@Override
 	public Mono<Tuple2<Metadata, Flux<DataBlock>>> request(URL url) {
-		Mono<Send<Buffer>> urlKeyMono = Mono.fromCallable(() -> url.getSerializer(db.getAllocator()).serialize(url));
+		Mono<Send<Buffer>> urlKeyMono = Mono.fromCallable(() -> serializeUrl(url));
 		return Mono
 				.using(
-						() -> url.getSerializer(db.getAllocator()).serialize(url),
+						() -> serializeUrl(url),
 						key -> fileMetadata.get(null, urlKeyMono),
 						Send::close
 				)
 				.map(serialized -> {
-					var diskMetadataDeserializationResult = diskMetadataSerializer.deserialize(serialized);
-					var diskMeta = diskMetadataDeserializationResult.deserializedData();
+					var diskMeta = deserializeMetadata(serialized);
 					var meta = diskMeta.asMetadata();
 					if (diskMeta.isDownloadedFully()) {
 						return Tuples.of(meta, this.requestContent(url));

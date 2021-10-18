@@ -23,6 +23,6 @@ import it.cavallium.dbengine.database.serialization.Serializer;
 
 public interface URL {
 
-	Serializer<URL> getSerializer(BufferAllocator allocator);
+	Serializer<URL> getSerializer();
 
 }

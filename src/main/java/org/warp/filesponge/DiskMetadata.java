@@ -21,8 +21,10 @@ package org.warp.filesponge;
 import io.net5.buffer.api.Buffer;
 import io.net5.buffer.api.BufferAllocator;
 import io.net5.buffer.api.Send;
-import it.cavallium.dbengine.database.serialization.BufferDataInput;
+import it.cavallium.dbengine.database.serialization.BufferDataInputOwned;
+import it.cavallium.dbengine.database.serialization.BufferDataInputShared;
 import it.cavallium.dbengine.database.serialization.BufferDataOutput;
+import it.cavallium.dbengine.database.serialization.SerializationException;
 import it.cavallium.dbengine.database.serialization.Serializer;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import org.jetbrains.annotations.NotNull;
@@ -37,19 +39,19 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 		// Ensure blocks count is valid by calling getBlocksCount()
 		getBlocksCount();
 		// It's fully downloaded if every block is true
-		downloadedFullyVal = !this.downloadedBlocks().contains(false);
+		downloadedFullyVal = !this.downloadedBlocks.contains(false);
 		return downloadedFullyVal;
 	}
 
 	@SuppressWarnings("UnusedReturnValue")
 	private int getBlocksCount() {
 		if (size == -1) {
-			return downloadedBlocks().size();
+			return downloadedBlocks.size();
 		}
 		var expectedBlocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
-		if (this.downloadedBlocks().size() != expectedBlocksCount) {
+		if (this.downloadedBlocks.size() != expectedBlocksCount) {
 			throw new IllegalStateException(
-					"Blocks array length (" + this.downloadedBlocks().size() + ") != expected blocks count ("
+					"Blocks array length (" + this.downloadedBlocks.size() + ") != expected blocks count ("
 							+ expectedBlocksCount + ")");
 		}
 		return expectedBlocksCount;
@@ -67,24 +69,18 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 	}
 
 	public boolean isDownloadedBlock(int id) {
-		if (size == -1 && downloadedBlocks().size() <= id) {
+		if (size == -1 && downloadedBlocks.size() <= id) {
 			return false;
 		} else {
-			return downloadedBlocks().getBoolean(id);
+			return downloadedBlocks.getBoolean(id);
 		}
 	}
 
 	public static class DiskMetadataSerializer implements Serializer<DiskMetadata> {
 
-		private final BufferAllocator allocator;
-
-		public DiskMetadataSerializer(BufferAllocator allocator) {
-			this.allocator = allocator;
-		}
-
 		@Override
-		public @NotNull DeserializationResult<DiskMetadata> deserialize(@NotNull Send<Buffer> serialized) {
-			var dis = new BufferDataInput(serialized);
+		public @NotNull DiskMetadata deserialize(@NotNull Buffer serialized) throws SerializationException {
+			var dis = new BufferDataInputShared(serialized);
 			int size = dis.readInt();
 			int blocksCount;
 			if (size == -1) {
@@ -96,25 +92,25 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 			for (int i = 0; i < blocksCount; i++) {
 				downloadedBlocks.add(dis.readBoolean());
 			}
-			return new DeserializationResult<>(new DiskMetadata(size, downloadedBlocks), dis.getReadBytesCount());
+			return new DiskMetadata(size, downloadedBlocks);
 		}
 
 		@Override
-		public @NotNull Send<Buffer> serialize(@NotNull DiskMetadata deserialized) {
-			try (var buffer = allocator.allocate(64)) {
-				var dos = new BufferDataOutput(buffer);
-				dos.writeInt(deserialized.size());
-				if (deserialized.size == -1) {
-					dos.writeShort(deserialized.getBlocksCount());
-				} else {
-					deserialized.getBlocksCount();
-				}
-				for (boolean downloadedBlock : deserialized.downloadedBlocks()) {
-					dos.writeBoolean(downloadedBlock);
-				}
-				return buffer.send();
+		public void serialize(@NotNull DiskMetadata deserialized, Buffer output) throws SerializationException {
+			var dos = new BufferDataOutput(output);
+			dos.writeInt(deserialized.size);
+			var blocksCount = deserialized.getBlocksCount();
+			if (deserialized.size == -1) {
+				dos.writeShort(blocksCount);
+			}
+			for (boolean downloadedBlock : deserialized.downloadedBlocks) {
+				dos.writeBoolean(downloadedBlock);
 			}
 		}
 
+		@Override
+		public int getSerializedSizeHint() {
+			return Integer.BYTES;
+		}
 	}
 }
