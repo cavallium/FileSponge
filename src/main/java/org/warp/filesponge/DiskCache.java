@@ -83,7 +83,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 						() -> serializeMetadata(new DiskMetadata(metadata.size(),
 								BooleanArrayList.wrap(new boolean[DiskMetadata.getBlocksCount(metadata.size(), BLOCK_SIZE)])
 						))
-				), UpdateReturnMode.NOTHING)
+				).receive(), UpdateReturnMode.NOTHING)
 				.then();
 	}
 
@@ -164,7 +164,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 								result = null;
 							}
 							if (result != null) {
-								return serializeMetadata(result);
+								return serializeMetadata(result).receive();
 							} else {
 								return null;
 							}
