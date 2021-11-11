@@ -35,6 +35,7 @@ import it.cavallium.dbengine.database.serialization.SerializationException;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 import org.jetbrains.annotations.Nullable;
 import org.warp.filesponge.DiskMetadata.DiskMetadataSerializer;
 import reactor.core.publisher.Flux;
@@ -50,17 +51,23 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 	private final LLKeyValueDatabase db;
 	private final LLDictionary fileContent;
 	private final LLDictionary fileMetadata;
+	private final Predicate<URL> shouldCache;
 
-	public DiskCache(LLKeyValueDatabase db, LLDictionary fileContent, LLDictionary fileMetadata) {
+	public DiskCache(LLKeyValueDatabase db,
+			LLDictionary fileContent,
+			LLDictionary fileMetadata,
+			Predicate<URL> shouldCache) {
 		this.db = db;
 		this.fileContent = fileContent;
 		this.fileMetadata = fileMetadata;
 		this.diskMetadataSerializer = new DiskMetadataSerializer();
+		this.shouldCache = shouldCache;
 	}
 
 	public static Mono<DiskCache> open(LLDatabaseConnection databaseConnection,
 			String dbName,
-			DatabaseOptions databaseOptions) {
+			DatabaseOptions databaseOptions,
+			Predicate<URL> shouldCache) {
 		return databaseConnection
 				.getDatabase(dbName,
 						List.of(Column.dictionary("file-content"), Column.dictionary("file-metadata")),
@@ -71,12 +78,15 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 						db.getDictionary("file-content", UpdateMode.ALLOW).single(),
 						db.getDictionary("file-metadata", UpdateMode.ALLOW).single()
 				))
-				.map(tuple -> new DiskCache(tuple.getT1(), tuple.getT2(), tuple.getT3()))
+				.map(tuple -> new DiskCache(tuple.getT1(), tuple.getT2(), tuple.getT3(), shouldCache))
 				.single();
 	}
 
 	@Override
 	public Mono<Void> writeMetadata(URL url, Metadata metadata) {
+		// Check if this cache should cache the url, otherwise do nothing
+		if (!shouldCache.test(url)) return Mono.empty();
+
 		Mono<Send<Buffer>> keyMono = Mono.fromCallable(() -> serializeUrl(url));
 		return fileMetadata
 				.update(keyMono, oldValue -> Objects.requireNonNullElseGet(oldValue,
@@ -124,6 +134,9 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 	@Override
 	public Mono<Void> writeContentBlock(URL url, DataBlock dataBlock) {
+		// Check if this cache should cache the url, otherwise do nothing
+		if (!shouldCache.test(url)) return Mono.empty();
+
 		Mono<Send<Buffer>> urlKeyMono = Mono.fromCallable(() -> serializeUrl(url));
 		Mono<Send<Buffer>> blockKeyMono = Mono.fromCallable(() -> getBlockKey(url, dataBlock.getId()));
 		return Mono

@@ -25,4 +25,8 @@ public interface URL {
 
 	Serializer<URL> getSerializer();
 
+	/**
+	 * @return String representation of this URL
+	 */
+	String toString();
 }
