@@ -18,15 +18,24 @@
 
 package org.warp.filesponge;
 
-import io.net5.buffer.api.BufferAllocator;
-import it.cavallium.dbengine.database.serialization.Serializer;
+import io.net5.buffer.api.Buffer;
+import it.cavallium.dbengine.database.serialization.BufferDataOutput;
+import it.cavallium.dbengine.database.serialization.SerializationException;
+import org.jetbrains.annotations.NotNull;
 
-public interface URL {
+public abstract class URLStringSerializer<T extends URL> implements URLSerializer<T> {
 
-	URLSerializer<? extends URL> getSerializer();
+	@Override
+	public final void serialize(@NotNull T url, Buffer output) throws SerializationException {
+		var string = this.serialize(url);
+		var dataOut = new BufferDataOutput(output);
+		dataOut.writeUTF(string);
+	}
 
-	/**
-	 * @return String representation of this URL
-	 */
-	String toString();
+	public abstract @NotNull String serialize(@NotNull T url);
+
+	@Override
+	public int getSerializedSizeHint() {
+		return 64;
+	}
 }

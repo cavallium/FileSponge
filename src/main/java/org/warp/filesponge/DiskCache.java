@@ -97,8 +97,10 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 				.then();
 	}
 
-	private Send<Buffer> serializeUrl(URL url) {
-		var urlSerializer = url.getSerializer();
+	private <T extends URL> Send<Buffer> serializeUrl(T url) {
+		@SuppressWarnings("unchecked")
+		URLSerializer<T> urlSerializer = (URLSerializer<T>) url.getSerializer();
+
 		int sizeHint = urlSerializer.getSerializedSizeHint();
 		if (sizeHint == -1) sizeHint = 64;
 		try (var buffer = db.getAllocator().allocate(sizeHint)) {
