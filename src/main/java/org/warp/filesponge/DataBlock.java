@@ -26,12 +26,12 @@ import io.net5.buffer.api.internal.ResourceSupport;
 import it.cavallium.dbengine.database.LLSearchResultShard;
 import it.cavallium.dbengine.database.collections.DatabaseSingle;
 import java.util.Objects;
-import org.warp.commonutils.log.Logger;
-import org.warp.commonutils.log.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 
-	private static final Logger logger = LoggerFactory.getLogger(DataBlock.class);
+	private static final Logger logger = LogManager.getLogger(DataBlock.class);
 
 	private static final Drop<DataBlock> DROP = new Drop<>() {
 		@Override

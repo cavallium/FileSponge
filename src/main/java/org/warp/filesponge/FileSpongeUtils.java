@@ -25,8 +25,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
-import org.warp.commonutils.log.Logger;
-import org.warp.commonutils.log.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -34,7 +34,7 @@ import reactor.core.scheduler.Schedulers;
 
 public class FileSpongeUtils {
 
-	private static final Logger logger = LoggerFactory.getLogger(FileSponge.class);
+	private static final Logger logger = LogManager.getLogger(FileSponge.class);
 
 	public static <T> Mono<T> firstWithValueMono(List<Mono<T>> monos) {
 		return Mono.firstWithValue(monos).onErrorResume(FileSpongeUtils::ignoreFakeErrors);

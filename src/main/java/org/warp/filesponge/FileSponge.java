@@ -24,15 +24,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.warp.commonutils.log.Logger;
-import org.warp.commonutils.log.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class FileSponge implements URLsHandler {
 
-	private static final Logger logger = LoggerFactory.getLogger(FileSponge.class);
+	private static final Logger logger = LogManager.getLogger(FileSponge.class);
 
 	public static final int BLOCK_SIZE = 1024 * 1024; // 1 MiB
 
