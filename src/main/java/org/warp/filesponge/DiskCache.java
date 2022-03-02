@@ -22,7 +22,7 @@ import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 
 import io.net5.buffer.api.Buffer;
 import io.net5.buffer.api.Send;
-import it.cavallium.dbengine.database.Column;
+import it.cavallium.dbengine.database.ColumnUtils;
 import it.cavallium.dbengine.database.LLDatabaseConnection;
 import it.cavallium.dbengine.database.LLDictionary;
 import it.cavallium.dbengine.database.LLDictionaryResultType;
@@ -30,8 +30,8 @@ import it.cavallium.dbengine.database.LLKeyValueDatabase;
 import it.cavallium.dbengine.database.LLUtils;
 import it.cavallium.dbengine.database.UpdateMode;
 import it.cavallium.dbengine.database.UpdateReturnMode;
-import it.cavallium.dbengine.client.DatabaseOptions;
 import it.cavallium.dbengine.database.serialization.SerializationException;
+import it.cavallium.dbengine.rpc.current.data.DatabaseOptions;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -70,7 +70,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 			Predicate<URL> shouldCache) {
 		return databaseConnection
 				.getDatabase(dbName,
-						List.of(Column.dictionary("file-content"), Column.dictionary("file-metadata")),
+						List.of(ColumnUtils.dictionary("file-content"), ColumnUtils.dictionary("file-metadata")),
 						databaseOptions
 				)
 				.flatMap(db -> Mono.zip(
