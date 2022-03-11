@@ -106,7 +106,7 @@
       <dependency>
         <groupId>org.jetbrains</groupId>
         <artifactId>annotations</artifactId>
-        <version>20.1.0</version>
+        <version>22.0.0</version>
       </dependency>
       <dependency>
         <groupId>org.warp</groupId>
@@ -145,7 +145,7 @@
             <annotationProcessorPath>
               <groupId>io.soabase.record-builder</groupId>
               <artifactId>record-builder-processor</artifactId>
-              <version>1.19</version>
+              <version>32</version>
             </annotationProcessorPath>
           </annotationProcessorPaths>
           <annotationProcessors>
