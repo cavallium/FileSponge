@@ -18,11 +18,11 @@
 
 package org.warp.filesponge;
 
-import io.net5.buffer.api.Buffer;
-import io.net5.buffer.api.Drop;
-import io.net5.buffer.api.Owned;
-import io.net5.buffer.api.Send;
-import io.net5.buffer.api.internal.ResourceSupport;
+import io.netty5.buffer.api.Buffer;
+import io.netty5.buffer.api.Drop;
+import io.netty5.buffer.api.Owned;
+import io.netty5.buffer.api.Send;
+import io.netty5.buffer.api.internal.ResourceSupport;
 import it.cavallium.dbengine.database.LLSearchResultShard;
 import it.cavallium.dbengine.database.collections.DatabaseSingle;
 import java.util.Objects;

@@ -20,8 +20,8 @@ package org.warp.filesponge;
 
 import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 
-import io.net5.buffer.api.Buffer;
-import io.net5.buffer.api.Send;
+import io.netty5.buffer.api.Buffer;
+import io.netty5.buffer.api.Send;
 import it.cavallium.dbengine.database.ColumnUtils;
 import it.cavallium.dbengine.database.LLDatabaseConnection;
 import it.cavallium.dbengine.database.LLDictionary;
