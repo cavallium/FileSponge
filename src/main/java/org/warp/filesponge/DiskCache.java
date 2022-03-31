@@ -89,11 +89,14 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 		Mono<Send<Buffer>> keyMono = Mono.fromCallable(() -> serializeUrl(url));
 		return fileMetadata
-				.update(keyMono, oldValue -> Objects.requireNonNullElseGet(oldValue,
-						() -> serializeMetadata(new DiskMetadata(metadata.size(),
-								BooleanArrayList.wrap(new boolean[DiskMetadata.getBlocksCount(metadata.size(), BLOCK_SIZE)])
-						))
-				).receive(), UpdateReturnMode.NOTHING)
+				.update(keyMono,
+						oldValue -> Objects.requireNonNullElseGet(oldValue,
+								() -> serializeMetadata(new DiskMetadata(metadata.size(),
+										BooleanArrayList.wrap(new boolean[DiskMetadata.getBlocksCount(metadata.size(), BLOCK_SIZE)])
+								)).receive()
+						),
+						UpdateReturnMode.NOTHING
+				)
 				.then();
 	}
 
@@ -126,9 +129,9 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 		}
 	}
 
-	private DiskMetadata deserializeMetadata(Send<Buffer> prevBytes) {
-		try (var prevBytesBuf = prevBytes.receive()) {
-			return diskMetadataSerializer.deserialize(prevBytesBuf);
+	private DiskMetadata deserializeMetadata(Buffer prevBytes) {
+		try {
+			return diskMetadataSerializer.deserialize(prevBytes);
 		} catch (SerializationException ex) {
 			throw new IllegalStateException("Failed to deserialize metadata", ex);
 		}
@@ -244,7 +247,11 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 		Mono<Send<Buffer>> urlKeyMono = Mono.fromCallable(() -> serializeUrl(url));
 		return fileMetadata
 				.get(null, urlKeyMono)
-				.map(this::deserializeMetadata);
+				.map(prevBytesSend -> {
+					try (var prevBytes = prevBytesSend.receive()) {
+						return deserializeMetadata(prevBytes);
+					}
+				});
 	}
 
 	@Override
@@ -263,7 +270,10 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 						Send::close
 				)
 				.map(serialized -> {
-					var diskMeta = deserializeMetadata(serialized);
+					DiskMetadata diskMeta;
+					try (var serializedBuf = serialized.receive()) {
+						diskMeta = deserializeMetadata(serializedBuf);
+					}
 					var meta = diskMeta.asMetadata();
 					if (diskMeta.isDownloadedFully()) {
 						return Tuples.of(meta, this.requestContent(url));
