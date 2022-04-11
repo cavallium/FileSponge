@@ -96,7 +96,7 @@
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-api</artifactId>
-        <version>5.8.0-M1</version>
+        <version>5.8.2</version>
       </dependency>
       <dependency>
         <groupId>io.soabase.record-builder</groupId>
@@ -145,7 +145,7 @@
             <annotationProcessorPath>
               <groupId>io.soabase.record-builder</groupId>
               <artifactId>record-builder-processor</artifactId>
-              <version>32</version>
+              <version>33</version>
             </annotationProcessorPath>
           </annotationProcessorPaths>
           <annotationProcessors>
@@ -168,11 +168,11 @@
         </plugin>
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>2.22.1</version>
+          <version>3.0.0-M5</version>
         </plugin>
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
-          <version>3.0.2</version>
+          <version>3.2.0</version>
         </plugin>
         <plugin>
           <artifactId>maven-install-plugin</artifactId>
