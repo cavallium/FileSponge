@@ -72,17 +72,12 @@
 			<artifactId>annotations</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.warp</groupId>
-			<artifactId>common-utils</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>io.projectreactor</groupId>
 			<artifactId>reactor-core</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>io.projectreactor</groupId>
 			<artifactId>reactor-test</artifactId>
-			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>it.cavallium</groupId>
@@ -106,11 +101,6 @@
 				<groupId>org.jetbrains</groupId>
 				<artifactId>annotations</artifactId>
 				<version>23.0.0</version>
-			</dependency>
-			<dependency>
-				<groupId>org.warp</groupId>
-				<artifactId>common-utils</artifactId>
-				<version>1.1.8</version>
 			</dependency>
 			<dependency>
 				<groupId>io.projectreactor</groupId>
