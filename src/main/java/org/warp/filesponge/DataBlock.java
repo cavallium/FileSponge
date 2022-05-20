@@ -71,9 +71,9 @@ public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 	private final int length;
 	private final Buffer data;
 
-	public Send<Buffer> getData() {
+	public Buffer getDataCopy() {
 		assert data.isAccessible();
-		return data.copy().send();
+		return data.copy();
 	}
 
 	public Buffer getDataUnsafe() {
@@ -106,8 +106,8 @@ public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 		if (this.getLength() != other.getLength()) {
 			return false;
 		}
-		final Object this$data = this.getData();
-		final Object other$data = other.getData();
+		final Object this$data = this.getDataUnsafe();
+		final Object other$data = other.getDataUnsafe();
 		if (!Objects.equals(this$data, other$data)) {
 			return false;
 		}
@@ -119,13 +119,13 @@ public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 		int result = 1;
 		result = result * PRIME + this.getOffset();
 		result = result * PRIME + this.getLength();
-		final Object $data = this.getData();
+		final Object $data = this.getDataUnsafe();
 		result = result * PRIME + ($data == null ? 43 : $data.hashCode());
 		return result;
 	}
 
 	public String toString() {
-		return "DataBlock(offset=" + this.getOffset() + ", length=" + this.getLength() + ", data=" + this.getData() + ")";
+		return "DataBlock(offset=" + this.getOffset() + ", length=" + this.getLength() + ", data=" + this.getDataUnsafe() + ")";
 	}
 
 	@Override
