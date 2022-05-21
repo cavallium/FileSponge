@@ -216,8 +216,8 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 							var blockKeyMono = Mono.fromCallable(() -> getBlockKey(url, blockId));
 							return fileContent
 									.get(null, blockKeyMono)
-									.map(dataToReceive -> {
-										try (var data = dataToReceive) {
+									.map(data -> {
+										try (data) {
 											int blockOffset = getBlockOffset(blockId);
 											int blockLength = data.readableBytes();
 											if (meta.size() != -1) {
@@ -254,8 +254,8 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 		Mono<Buffer> urlKeyMono = Mono.fromCallable(() -> serializeUrl(url));
 		return fileMetadata
 				.get(null, urlKeyMono)
-				.map(prevBytesSend -> {
-					try (var prevBytes = prevBytesSend) {
+				.map(prevBytes -> {
+					try (prevBytes) {
 						return deserializeMetadata(prevBytes);
 					}
 				});
