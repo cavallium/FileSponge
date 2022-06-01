@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
@@ -45,11 +46,14 @@ public class FileSpongeUtils {
 	}
 
 	private static <T> Mono<T> ignoreFakeErrors(Throwable ex) {
-		if (ex instanceof NoSuchElementException) {
-			var multiple = Exceptions.unwrapMultiple(ex.getCause());
+		if (ex instanceof NoSuchElementException && Exceptions.isMultiple(ex.getCause())) {
+			var multiple = Exceptions.unwrapMultipleExcludingTracebacks(ex.getCause());
 			for (Throwable throwable : multiple) {
 				if (!(throwable instanceof NoSuchElementException)) {
-					return Mono.error(ex);
+					var differentErrors = multiple.stream()
+							.filter(e -> !(e instanceof NoSuchElementException))
+							.toArray(Throwable[]::new);
+					return Mono.error(Exceptions.multiple(differentErrors));
 				}
 			}
 			return Mono.empty();
