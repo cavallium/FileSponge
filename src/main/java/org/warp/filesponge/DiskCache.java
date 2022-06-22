@@ -18,6 +18,7 @@
 
 package org.warp.filesponge;
 
+import static java.lang.Math.toIntExact;
 import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 
 import io.netty5.buffer.api.Buffer;
@@ -208,7 +209,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 						// Get only downloaded blocks
 						.filter(Tuple2::getT2)
 						.flatMapSequential(blockMeta -> {
-							int blockId = Math.toIntExact(blockMeta.getT1());
+							int blockId = toIntExact(blockMeta.getT1());
 							boolean downloaded = blockMeta.getT2();
 							if (!downloaded) {
 								return Mono.empty();
@@ -218,7 +219,7 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 									.get(null, blockKeyMono)
 									.map(data -> {
 										try (data) {
-											int blockOffset = getBlockOffset(blockId);
+											long blockOffset = getBlockOffset(blockId);
 											int blockLength = data.readableBytes();
 											if (meta.size() != -1) {
 												if (blockOffset + blockLength >= meta.size()) {
@@ -245,8 +246,8 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 		}
 	}
 
-	private static int getBlockOffset(int blockId) {
-		return blockId * BLOCK_SIZE;
+	private static long getBlockOffset(int blockId) {
+		return blockId * (long) BLOCK_SIZE;
 	}
 
 	@Override

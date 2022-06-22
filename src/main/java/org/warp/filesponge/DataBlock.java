@@ -18,6 +18,8 @@
 
 package org.warp.filesponge;
 
+import static java.lang.Math.toIntExact;
+
 import io.netty5.buffer.api.Buffer;
 import io.netty5.buffer.api.Drop;
 import io.netty5.buffer.api.Owned;
@@ -54,11 +56,11 @@ public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 		}
 	};
 
-	public static DataBlock of(int offset, int length, Send<Buffer> data) {
+	public static DataBlock of(long offset, int length, Send<Buffer> data) {
 		return new DataBlock(offset, length, data);
 	}
 
-	private DataBlock(int offset, int length, Send<Buffer> data) {
+	private DataBlock(long offset, int length, Send<Buffer> data) {
 		super(DROP);
 		try (data) {
 			this.offset = offset;
@@ -67,7 +69,7 @@ public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 		}
 	}
 
-	private final int offset;
+	private final long offset;
 	private final int length;
 	private final Buffer data;
 
@@ -81,10 +83,10 @@ public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 	}
 
 	public int getId() {
-		return offset / FileSponge.BLOCK_SIZE;
+		return toIntExact(offset / FileSponge.BLOCK_SIZE);
 	}
 
-	public int getOffset() {
+	public long getOffset() {
 		return this.offset;
 	}
 
@@ -117,7 +119,8 @@ public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 	public int hashCode() {
 		final int PRIME = 59;
 		int result = 1;
-		result = result * PRIME + this.getOffset();
+		long offset = this.getOffset();
+		result = result * PRIME + (int) (offset ^ (offset >>> 32));
 		result = result * PRIME + this.getLength();
 		final Object $data = this.getDataUnsafe();
 		result = result * PRIME + ($data == null ? 43 : $data.hashCode());

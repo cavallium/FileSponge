@@ -18,6 +18,8 @@
 
 package org.warp.filesponge;
 
+import static java.lang.Math.toIntExact;
+
 import io.netty5.buffer.api.Buffer;
 import io.netty5.buffer.api.BufferAllocator;
 import io.netty5.buffer.api.Send;
@@ -32,7 +34,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * size -1 = unknown size
  */
-public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
+public record DiskMetadata(long size, BooleanArrayList downloadedBlocks) {
 
 	public boolean isDownloadedFully() {
 		boolean downloadedFullyVal;
@@ -57,11 +59,11 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 		return expectedBlocksCount;
 	}
 
-	public static int getBlocksCount(int size, int blockSize) {
-		if (size == -1) {
+	public static int getBlocksCount(long size, int blockSize) {
+		if (size == -1L) {
 			return 0;
 		}
-		return (size + (blockSize - size % blockSize)) / blockSize;
+		return toIntExact((size + (blockSize - size % blockSize)) / blockSize);
 	}
 
 	public Metadata asMetadata() {
@@ -81,7 +83,13 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 		@Override
 		public @NotNull DiskMetadata deserialize(@NotNull Buffer serialized) throws SerializationException {
 			var dis = new BufferDataInputShared(serialized);
-			int size = dis.readInt();
+			int legacySize = dis.readInt();
+			long size;
+			if (legacySize == -2) {
+				size = dis.readLong();
+			} else {
+				size = legacySize;
+			}
 			int blocksCount;
 			if (size == -1) {
 				blocksCount = dis.readShort();
@@ -98,7 +106,8 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 		@Override
 		public void serialize(@NotNull DiskMetadata deserialized, Buffer output) throws SerializationException {
 			var dos = new BufferDataOutput(output);
-			dos.writeInt(deserialized.size);
+			dos.writeInt(-2);
+			dos.writeLong(deserialized.size);
 			var blocksCount = deserialized.getBlocksCount();
 			if (deserialized.size == -1) {
 				dos.writeShort(blocksCount);
@@ -110,7 +119,7 @@ public record DiskMetadata(int size, BooleanArrayList downloadedBlocks) {
 
 		@Override
 		public int getSerializedSizeHint() {
-			return Integer.BYTES;
+			return Integer.BYTES + Long.BYTES;
 		}
 	}
 }

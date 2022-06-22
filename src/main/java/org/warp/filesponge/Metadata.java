@@ -22,4 +22,4 @@ package org.warp.filesponge;
 /**
  * size -1 = unknown size
  */
-public record Metadata(int size) {}
+public record Metadata(long size) {}
