@@ -6,5 +6,6 @@ module filesponge {
 	requires org.jetbrains.annotations;
 	requires reactor.core;
 	requires org.reactivestreams;
+	requires io.netty5.common;
 	exports org.warp.filesponge;
 }
