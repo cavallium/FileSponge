@@ -18,6 +18,7 @@
 
 package org.warp.filesponge;
 
+import it.cavallium.dbengine.database.LLUtils;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import java.util.ArrayList;
 import java.util.List;
@@ -116,7 +117,7 @@ public class FileSponge implements URLsHandler {
 				)
 				.distinct(DataBlock::getId)
 
-				.doOnDiscard(DataBlock.class, DataBlock::close);
+				.doOnDiscard(DataBlock.class, LLUtils::onDiscard);
 	}
 
 	@Override
