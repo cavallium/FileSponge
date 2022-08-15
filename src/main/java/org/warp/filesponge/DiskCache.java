@@ -24,6 +24,7 @@ import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 import io.netty5.buffer.api.Buffer;
 import io.netty5.util.Resource;
 import io.netty5.util.Send;
+import it.cavallium.dbengine.client.IBackuppable;
 import it.cavallium.dbengine.database.BufSupplier;
 import it.cavallium.dbengine.database.ColumnUtils;
 import it.cavallium.dbengine.database.LLDatabaseConnection;
@@ -47,7 +48,7 @@ import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
-public class DiskCache implements URLsDiskHandler, URLsWriter {
+public class DiskCache implements URLsDiskHandler, URLsWriter, IBackuppable {
 
 	private final DiskMetadataSerializer diskMetadataSerializer;
 
@@ -293,5 +294,20 @@ public class DiskCache implements URLsDiskHandler, URLsWriter {
 
 	public Mono<Void> close() {
 		return db.close();
+	}
+
+	@Override
+	public Mono<Void> pauseForBackup() {
+		return db.pauseForBackup();
+	}
+
+	@Override
+	public Mono<Void> resumeAfterBackup() {
+		return db.resumeAfterBackup();
+	}
+
+	@Override
+	public boolean isPaused() {
+		return db.isPaused();
 	}
 }
