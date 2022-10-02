@@ -20,11 +20,11 @@ package org.warp.filesponge;
 
 import static java.lang.Math.toIntExact;
 
-import io.netty5.buffer.api.Buffer;
-import io.netty5.buffer.api.Drop;
-import io.netty5.buffer.api.Owned;
+import io.netty5.buffer.Buffer;
+import io.netty5.buffer.Drop;
+import io.netty5.buffer.Owned;
 import io.netty5.util.Send;
-import io.netty5.buffer.api.internal.ResourceSupport;
+import io.netty5.buffer.internal.ResourceSupport;
 import java.util.Objects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

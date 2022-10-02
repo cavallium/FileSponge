@@ -21,7 +21,7 @@ package org.warp.filesponge;
 import static java.lang.Math.toIntExact;
 import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 
-import io.netty5.buffer.api.Buffer;
+import io.netty5.buffer.Buffer;
 import io.netty5.util.Resource;
 import io.netty5.util.Send;
 import it.cavallium.dbengine.client.IBackuppable;
