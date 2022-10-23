@@ -101,7 +101,7 @@
 			<dependency>
 				<groupId>io.soabase.record-builder</groupId>
 				<artifactId>record-builder-core</artifactId>
-				<version>33</version>
+				<version>34</version>
 			</dependency>
 			<dependency>
 				<groupId>org.jetbrains</groupId>
@@ -111,12 +111,12 @@
 			<dependency>
 				<groupId>io.projectreactor</groupId>
 				<artifactId>reactor-core</artifactId>
-				<version>3.4.18</version>
+				<version>3.4.24</version>
 			</dependency>
 			<dependency>
 				<groupId>io.projectreactor</groupId>
 				<artifactId>reactor-test</artifactId>
-				<version>3.4.18</version>
+				<version>3.4.24</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
