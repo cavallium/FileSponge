@@ -20,12 +20,8 @@ package org.warp.filesponge;
 
 import static java.lang.Math.toIntExact;
 
-import io.netty5.buffer.Buffer;
-import io.netty5.buffer.BufferAllocator;
-import io.netty5.util.Send;
-import it.cavallium.dbengine.database.serialization.BufferDataInputOwned;
-import it.cavallium.dbengine.database.serialization.BufferDataInputShared;
-import it.cavallium.dbengine.database.serialization.BufferDataOutput;
+import it.cavallium.dbengine.buffers.BufDataInput;
+import it.cavallium.dbengine.buffers.BufDataOutput;
 import it.cavallium.dbengine.database.serialization.SerializationException;
 import it.cavallium.dbengine.database.serialization.Serializer;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
@@ -81,8 +77,7 @@ public record DiskMetadata(long size, BooleanArrayList downloadedBlocks) {
 	public static class DiskMetadataSerializer implements Serializer<DiskMetadata> {
 
 		@Override
-		public @NotNull DiskMetadata deserialize(@NotNull Buffer serialized) throws SerializationException {
-			var dis = new BufferDataInputShared(serialized);
+		public @NotNull DiskMetadata deserialize(@NotNull BufDataInput dis) throws SerializationException {
 			int legacySize = dis.readInt();
 			long size;
 			if (legacySize == -2) {
@@ -104,8 +99,7 @@ public record DiskMetadata(long size, BooleanArrayList downloadedBlocks) {
 		}
 
 		@Override
-		public void serialize(@NotNull DiskMetadata deserialized, Buffer output) throws SerializationException {
-			var dos = new BufferDataOutput(output);
+		public void serialize(@NotNull DiskMetadata deserialized, BufDataOutput dos) throws SerializationException {
 			dos.writeInt(-2);
 			dos.writeLong(deserialized.size);
 			var blocksCount = deserialized.getBlocksCount();

@@ -28,7 +28,7 @@ public class ThreadSafety {
 					return s;
 				})).subscribeOn(schedulerSingle))
 				.ignoreElements()
-				.thenMany(Flux.defer(() -> Flux.fromStream(list::stream)))
+				.thenMany(Flux.defer(() -> Flux.fromStream(list::stream).subscribeOn(Schedulers.boundedElastic())))
 				.subscribeOn(schedulerParallel);
 
 		Integer[] checks = new Integer[iterations * 2];

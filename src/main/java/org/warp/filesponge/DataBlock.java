@@ -20,65 +20,31 @@ package org.warp.filesponge;
 
 import static java.lang.Math.toIntExact;
 
-import io.netty5.buffer.Buffer;
-import io.netty5.buffer.Drop;
-import io.netty5.buffer.Owned;
-import io.netty5.util.Send;
-import io.netty5.buffer.internal.ResourceSupport;
+import it.cavallium.dbengine.buffers.Buf;
+import java.nio.Buffer;
 import java.util.Objects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
+public final class DataBlock {
 
-	private static final Logger logger = LogManager.getLogger(DataBlock.class);
+	public static DataBlock EMPTY = new DataBlock(-1, -1, null);
 
-	private static final Drop<DataBlock> DROP = new Drop<>() {
-		@Override
-		public void drop(DataBlock obj) {
-			try {
-				if (obj.data != null) {
-					obj.data.close();
-				}
-			} catch (Throwable ex) {
-				logger.error("Failed to close data", ex);
-			}
-		}
-
-		@Override
-		public Drop<DataBlock> fork() {
-			return this;
-		}
-
-		@Override
-		public void attach(DataBlock obj) {
-
-		}
-	};
-
-	public static DataBlock of(long offset, int length, Send<Buffer> data) {
+	public static DataBlock of(long offset, int length, Buf data) {
 		return new DataBlock(offset, length, data);
 	}
 
-	private DataBlock(long offset, int length, Send<Buffer> data) {
-		super(DROP);
-		try (data) {
-			this.offset = offset;
-			this.length = length;
-			this.data = data.receive();
-		}
+	private DataBlock(long offset, int length, Buf data) {
+		this.offset = offset;
+		this.length = length;
+		this.data = data;
 	}
 
 	private final long offset;
 	private final int length;
-	private final Buffer data;
+	private final Buf data;
 
-	public Buffer getDataCopy() {
-		assert data.isAccessible();
-		return data.copy();
-	}
-
-	public Buffer getDataUnsafe() {
+	public Buf getData() {
 		return data;
 	}
 
@@ -98,22 +64,18 @@ public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 		if (o == this) {
 			return true;
 		}
-		if (!(o instanceof DataBlock)) {
+		if (!(o instanceof final DataBlock other)) {
 			return false;
 		}
-		final DataBlock other = (DataBlock) o;
 		if (this.getOffset() != other.getOffset()) {
 			return false;
 		}
 		if (this.getLength() != other.getLength()) {
 			return false;
 		}
-		final Object this$data = this.getDataUnsafe();
-		final Object other$data = other.getDataUnsafe();
-		if (!Objects.equals(this$data, other$data)) {
-			return false;
-		}
-		return true;
+		final Object this$data = this.getData();
+		final Object other$data = other.getData();
+		return Objects.equals(this$data, other$data);
 	}
 
 	public int hashCode() {
@@ -122,28 +84,13 @@ public final class DataBlock extends ResourceSupport<DataBlock, DataBlock> {
 		long offset = this.getOffset();
 		result = result * PRIME + (int) (offset ^ (offset >>> 32));
 		result = result * PRIME + this.getLength();
-		final Object $data = this.getDataUnsafe();
+		final Object $data = this.getData();
 		result = result * PRIME + ($data == null ? 43 : $data.hashCode());
 		return result;
 	}
 
 	public String toString() {
-		return "DataBlock(offset=" + this.getOffset() + ", length=" + this.getLength() + ", data=" + this.getDataUnsafe() + ")";
+		return "DataBlock(offset=" + this.getOffset() + ", length=" + this.getLength() + ", data=" + this.getData() + ")";
 	}
 
-	@Override
-	protected RuntimeException createResourceClosedException() {
-		return new IllegalStateException("Closed");
-	}
-
-	@Override
-	protected Owned<DataBlock> prepareSend() {
-		Send<Buffer> dataSend;
-		dataSend = this.data.send();
-		return drop -> {
-			var instance = new DataBlock(offset, length, dataSend);
-			drop.attach(instance);
-			return instance;
-		};
-	}
 }

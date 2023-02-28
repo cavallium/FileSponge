@@ -18,18 +18,17 @@
 
 package org.warp.filesponge;
 
-import io.netty5.buffer.Buffer;
-import it.cavallium.dbengine.database.serialization.BufferDataOutput;
+import it.cavallium.dbengine.buffers.Buf;
+import it.cavallium.dbengine.buffers.BufDataOutput;
 import it.cavallium.dbengine.database.serialization.SerializationException;
 import org.jetbrains.annotations.NotNull;
 
 public abstract class URLStringSerializer<T extends URL> implements URLSerializer<T> {
 
 	@Override
-	public final void serialize(@NotNull T url, Buffer output) throws SerializationException {
+	public final void serialize(@NotNull T url, BufDataOutput output) throws SerializationException {
 		var string = this.serialize(url);
-		var dataOut = new BufferDataOutput(output);
-		dataOut.writeUTF(string);
+		output.writeUTF(string);
 	}
 
 	public abstract @NotNull String serialize(@NotNull T url);
