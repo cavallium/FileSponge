@@ -106,7 +106,7 @@ public class FileSponge implements URLsHandler {
 											for (URLsWriter urlsWriter : cw) {
 												cacheWriteActions.add(urlsWriter.writeContentBlock(url, dataBlock));
 											}
-											return Mono.when(cacheWriteActions).thenReturn(dataBlock);
+											return Mono.whenDelayError(cacheWriteActions).thenReturn(dataBlock);
 										})
 								);
 							}
@@ -151,7 +151,7 @@ public class FileSponge implements URLsHandler {
 											for (URLsWriter urlsWriter : cw) {
 												cacheWriteActions.add(urlsWriter.writeMetadata(url, meta));
 											}
-											return Mono.when(cacheWriteActions).thenReturn(meta);
+											return Mono.whenDelayError(cacheWriteActions).thenReturn(meta);
 										})
 								);
 							}
