@@ -21,9 +21,9 @@ package org.warp.filesponge;
 import static java.lang.Math.toIntExact;
 import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 
-import it.cavallium.dbengine.buffers.Buf;
-import it.cavallium.dbengine.buffers.BufDataInput;
-import it.cavallium.dbengine.buffers.BufDataOutput;
+import it.cavallium.buffer.Buf;
+import it.cavallium.buffer.BufDataInput;
+import it.cavallium.buffer.BufDataOutput;
 import it.cavallium.dbengine.client.IBackuppable;
 import it.cavallium.dbengine.database.ColumnUtils;
 import it.cavallium.dbengine.database.LLDatabaseConnection;

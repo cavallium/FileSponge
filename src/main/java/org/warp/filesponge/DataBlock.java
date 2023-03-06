@@ -20,7 +20,7 @@ package org.warp.filesponge;
 
 import static java.lang.Math.toIntExact;
 
-import it.cavallium.dbengine.buffers.Buf;
+import it.cavallium.buffer.Buf;
 import java.nio.Buffer;
 import java.util.Objects;
 import org.apache.logging.log4j.LogManager;

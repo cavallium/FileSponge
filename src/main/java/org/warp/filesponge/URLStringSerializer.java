@@ -18,8 +18,8 @@
 
 package org.warp.filesponge;
 
-import it.cavallium.dbengine.buffers.Buf;
-import it.cavallium.dbengine.buffers.BufDataOutput;
+import it.cavallium.buffer.Buf;
+import it.cavallium.buffer.BufDataOutput;
 import it.cavallium.dbengine.database.serialization.SerializationException;
 import org.jetbrains.annotations.NotNull;
 
