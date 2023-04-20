@@ -5,6 +5,6 @@ module filesponge {
 	requires org.jetbrains.annotations;
 	requires reactor.core;
 	requires org.reactivestreams;
-	requires data.generator.runtime;
+	requires it.cavallium.datagen;
 	exports org.warp.filesponge;
 }
