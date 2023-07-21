@@ -31,7 +31,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import reactor.util.function.Tuple2;
 
-public interface DiskCache extends URLsDiskHandler, URLsWriter, IBackuppable, SafeCloseable {
+public interface DiskCache extends URLsDiskHandler, URLsWriter, SafeCloseable {
 
 	void writeMetadataSync(URL url, Metadata metadata);
 
@@ -58,10 +58,9 @@ public interface DiskCache extends URLsDiskHandler, URLsWriter, IBackuppable, Sa
 		return new DiskCacheImpl(db, dict1, dict2, shouldCache);
 	}
 
-	static DiskCache openCustom(LLKeyValueDatabase db,
-			LLDictionary fileContent,
+	static DiskCache openCustom(LLDictionary fileContent,
 			LLDictionary fileMetadata,
 			Predicate<URL> shouldCache) {
-		return new DiskCacheImpl(db, fileContent, fileMetadata, shouldCache);
+		return new DiskCacheImpl(null, fileContent, fileMetadata, shouldCache);
 	}
 }

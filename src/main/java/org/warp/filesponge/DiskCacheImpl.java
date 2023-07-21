@@ -24,19 +24,13 @@ import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 import it.cavallium.buffer.Buf;
 import it.cavallium.buffer.BufDataInput;
 import it.cavallium.buffer.BufDataOutput;
-import it.cavallium.dbengine.client.IBackuppable;
-import it.cavallium.dbengine.database.ColumnUtils;
-import it.cavallium.dbengine.database.LLDatabaseConnection;
 import it.cavallium.dbengine.database.LLDictionary;
 import it.cavallium.dbengine.database.LLDictionaryResultType;
 import it.cavallium.dbengine.database.LLKeyValueDatabase;
-import it.cavallium.dbengine.database.UpdateMode;
 import it.cavallium.dbengine.database.UpdateReturnMode;
 import it.cavallium.dbengine.database.serialization.SerializationException;
-import it.cavallium.dbengine.rpc.current.data.DatabaseOptions;
 import it.cavallium.dbengine.utils.StreamUtils;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -51,17 +45,17 @@ import reactor.util.function.Tuples;
 class DiskCacheImpl implements DiskCache {
 
 	private final DiskMetadataSerializer diskMetadataSerializer;
-
-	private final LLKeyValueDatabase db;
+	@Nullable
+	private final LLKeyValueDatabase ownedDb;
 	private final LLDictionary fileContent;
 	private final LLDictionary fileMetadata;
 	private final Predicate<URL> shouldCache;
 
-	public DiskCacheImpl(LLKeyValueDatabase db,
+	DiskCacheImpl(@Nullable LLKeyValueDatabase ownedDb,
 			LLDictionary fileContent,
 			LLDictionary fileMetadata,
 			Predicate<URL> shouldCache) {
-		this.db = db;
+		this.ownedDb = ownedDb;
 		this.fileContent = fileContent;
 		this.fileMetadata = fileMetadata;
 		this.diskMetadataSerializer = new DiskMetadataSerializer();
@@ -305,21 +299,8 @@ class DiskCacheImpl implements DiskCache {
 
 	@Override
 	public void close() {
-		db.close();
-	}
-
-	@Override
-	public void pauseForBackup() {
-		db.pauseForBackup();
-	}
-
-	@Override
-	public void resumeAfterBackup() {
-		db.resumeAfterBackup();
-	}
-
-	@Override
-	public boolean isPaused() {
-		return db.isPaused();
+		if (ownedDb != null) {
+			ownedDb.close();
+		}
 	}
 }
