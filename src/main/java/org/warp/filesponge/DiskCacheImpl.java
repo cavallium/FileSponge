@@ -24,6 +24,7 @@ import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 import it.cavallium.buffer.Buf;
 import it.cavallium.buffer.BufDataInput;
 import it.cavallium.buffer.BufDataOutput;
+import it.cavallium.dbengine.client.IBackuppable;
 import it.cavallium.dbengine.database.LLDictionary;
 import it.cavallium.dbengine.database.LLDictionaryResultType;
 import it.cavallium.dbengine.database.LLKeyValueDatabase;
@@ -301,6 +302,29 @@ class DiskCacheImpl implements DiskCache {
 	public void close() {
 		if (ownedDb != null) {
 			ownedDb.close();
+		}
+	}
+
+	@Override
+	public void pauseForBackup() {
+		if (ownedDb != null) {
+			ownedDb.pauseForBackup();
+		}
+	}
+
+	@Override
+	public void resumeAfterBackup() {
+		if (ownedDb != null) {
+			ownedDb.resumeAfterBackup();
+		}
+	}
+
+	@Override
+	public boolean isPaused() {
+		if (ownedDb != null) {
+			return ownedDb.isPaused();
+		} else {
+			return false;
 		}
 	}
 }

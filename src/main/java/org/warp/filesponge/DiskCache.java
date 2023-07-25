@@ -31,7 +31,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import reactor.util.function.Tuple2;
 
-public interface DiskCache extends URLsDiskHandler, URLsWriter, SafeCloseable {
+public interface DiskCache extends URLsDiskHandler, URLsWriter, SafeCloseable, IBackuppable {
 
 	void writeMetadataSync(URL url, Metadata metadata);
 
