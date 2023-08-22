@@ -22,20 +22,33 @@ import reactor.core.publisher.Mono;
 
 public interface URLsWriter {
 
-	Mono<Void> writeMetadata(URL url, Metadata metadata);
+	/**
+	 * @param force true to force writing onto a cache, ignoring the shouldCache predicate
+	 */
+	Mono<Void> writeMetadata(URL url, Metadata metadata, boolean force);
 
-	Mono<Void> writeContentBlock(URL url, DataBlock dataBlock);
+	/**
+	 * @param force true to force writing onto a cache, ignoring the shouldCache predicate
+	 */
+	Mono<Void> writeContentBlock(URL url, DataBlock dataBlock, boolean force);
 
 	default URLWriter getUrlWriter(URL url) {
 		return new URLWriter() {
+
+			/**
+			 * @param force true to force writing onto a cache, ignoring the shouldCache predicate
+			 */
 			@Override
-			public Mono<Void> writeMetadata(Metadata metadata) {
-				return URLsWriter.this.writeMetadata(url, metadata);
+			public Mono<Void> writeMetadata(Metadata metadata, boolean force) {
+				return URLsWriter.this.writeMetadata(url, metadata, force);
 			}
 
+			/**
+			 * @param force true to force writing onto a cache, ignoring the shouldCache predicate
+			 */
 			@Override
-			public Mono<Void> writeContentBlock(DataBlock dataBlock) {
-				return URLsWriter.this.writeContentBlock(url, dataBlock);
+			public Mono<Void> writeContentBlock(DataBlock dataBlock, boolean force) {
+				return URLsWriter.this.writeContentBlock(url, dataBlock, force);
 			}
 		};
 	}

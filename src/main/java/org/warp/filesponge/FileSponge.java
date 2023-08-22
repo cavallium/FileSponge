@@ -22,8 +22,6 @@ import it.cavallium.dbengine.database.LLUtils;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,7 +29,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-public class FileSponge implements URLsHandler {
+public class FileSponge implements URLsHandlerCached {
 
 	private static final Logger logger = LogManager.getLogger(FileSponge.class);
 
@@ -104,7 +102,7 @@ public class FileSponge implements URLsHandler {
 											var cw = this.cacheWrite;
 											List<Mono<Void>> cacheWriteActions = new ArrayList<>(cw.size());
 											for (URLsWriter urlsWriter : cw) {
-												cacheWriteActions.add(urlsWriter.writeContentBlock(url, dataBlock));
+												cacheWriteActions.add(urlsWriter.writeContentBlock(url, dataBlock, false));
 											}
 											return Mono.whenDelayError(cacheWriteActions).thenReturn(dataBlock);
 										})
@@ -120,8 +118,7 @@ public class FileSponge implements URLsHandler {
 				.doOnDiscard(DataBlock.class, LLUtils::onDiscard);
 	}
 
-	@Override
-	public Mono<Metadata> requestMetadata(URL url) {
+	public Mono<Metadata> requestCachedMetadata(URL url) {
 		return Mono
 				.fromCallable(() -> {
 					var ca = this.cacheAccess;
@@ -136,7 +133,12 @@ public class FileSponge implements URLsHandler {
 					if (metadata != null) {
 						logger.debug("File \"{}\" metadata has been found in the cache", url);
 					}
-				})
+				});
+	}
+
+	@Override
+	public Mono<Metadata> requestMetadata(URL url) {
+		return requestCachedMetadata(url)
 				.switchIfEmpty(Mono
 						.fromCallable(() -> {
 							logger.debug("Downloading file \"{}\" metadata", url);
@@ -149,7 +151,7 @@ public class FileSponge implements URLsHandler {
 											var cw = this.cacheWrite;
 											List<Mono<Void>> cacheWriteActions = new ArrayList<>(cw.size());
 											for (URLsWriter urlsWriter : cw) {
-												cacheWriteActions.add(urlsWriter.writeMetadata(url, meta));
+												cacheWriteActions.add(urlsWriter.writeMetadata(url, meta, false));
 											}
 											return Mono.whenDelayError(cacheWriteActions).thenReturn(meta);
 										})

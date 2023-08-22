@@ -23,7 +23,7 @@
 
 	<groupId>org.warp.filesponge</groupId>
 	<artifactId>FileSponge</artifactId>
-	<version>0.2.0</version>
+	<version>0.3.1</version>
 
 	<name>FileSponge</name>
 

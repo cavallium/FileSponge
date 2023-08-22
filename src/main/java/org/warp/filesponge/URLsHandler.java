@@ -27,6 +27,9 @@ public interface URLsHandler {
 
 	Flux<DataBlock> requestContent(URL url);
 
+	/**
+	 * Get metadata from cached sources, if not found, retrieve it online
+	 */
 	Mono<Metadata> requestMetadata(URL url);
 
 	default Mono<Tuple2<Metadata, Flux<DataBlock>>> request(URL url) {

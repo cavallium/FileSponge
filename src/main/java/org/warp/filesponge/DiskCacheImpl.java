@@ -24,7 +24,6 @@ import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 import it.cavallium.buffer.Buf;
 import it.cavallium.buffer.BufDataInput;
 import it.cavallium.buffer.BufDataOutput;
-import it.cavallium.dbengine.client.IBackuppable;
 import it.cavallium.dbengine.database.LLDictionary;
 import it.cavallium.dbengine.database.LLDictionaryResultType;
 import it.cavallium.dbengine.database.LLKeyValueDatabase;
@@ -64,12 +63,12 @@ class DiskCacheImpl implements DiskCache {
 	}
 
 	@Override
-	public Mono<Void> writeMetadata(URL url, Metadata metadata) {
-		return Mono.<Void>fromRunnable(() -> writeMetadataSync(url, metadata)).subscribeOn(Schedulers.boundedElastic());
+	public Mono<Void> writeMetadata(URL url, Metadata metadata, boolean force) {
+		return Mono.<Void>fromRunnable(() -> writeMetadataSync(url, metadata, force)).subscribeOn(Schedulers.boundedElastic());
 	}
 
 	@Override
-	public void writeMetadataSync(URL url, Metadata metadata) {
+	public void writeMetadataSync(URL url, Metadata metadata, boolean force) {
 		// Check if this cache should cache the url, otherwise do nothing
 		if (!shouldCache.test(url)) return;
 
@@ -122,14 +121,14 @@ class DiskCacheImpl implements DiskCache {
 	}
 
 	@Override
-	public Mono<Void> writeContentBlock(URL url, DataBlock dataBlock) {
+	public Mono<Void> writeContentBlock(URL url, DataBlock dataBlock, boolean force) {
 		return Mono
-				.<Void>fromRunnable(() -> writeContentBlockSync(url, dataBlock))
+				.<Void>fromRunnable(() -> writeContentBlockSync(url, dataBlock, force))
 				.subscribeOn(Schedulers.boundedElastic());
 	}
 
 	@Override
-	public void writeContentBlockSync(URL url, DataBlock dataBlock) {
+	public void writeContentBlockSync(URL url, DataBlock dataBlock, boolean force) {
 		// Check if this cache should cache the url, otherwise do nothing
 		if (!shouldCache.test(url)) {
 			return;

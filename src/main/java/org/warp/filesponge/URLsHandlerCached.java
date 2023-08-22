@@ -1,6 +1,6 @@
 /*
  *     FileSponge
- *     Copyright (C) 2021 Andrea Cavalli
+ *     Copyright (C) 2023 Andrea Cavalli
  *
  *     This program is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -20,10 +20,11 @@ package org.warp.filesponge;
 
 import reactor.core.publisher.Mono;
 
-public interface URLWriter {
+public interface URLsHandlerCached extends URLsHandler {
 
-	Mono<Void> writeMetadata(Metadata metadata, boolean force);
-
-	Mono<Void> writeContentBlock(DataBlock dataBlock, boolean force);
+	/**
+	 * Get metadata only from cached sources
+	 */
+	Mono<Metadata> requestCachedMetadata(URL url);
 
 }

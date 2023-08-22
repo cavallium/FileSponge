@@ -22,7 +22,6 @@ import it.cavallium.dbengine.client.IBackuppable;
 import it.cavallium.dbengine.database.ColumnUtils;
 import it.cavallium.dbengine.database.LLDatabaseConnection;
 import it.cavallium.dbengine.database.LLDictionary;
-import it.cavallium.dbengine.database.LLKeyValueDatabase;
 import it.cavallium.dbengine.database.SafeCloseable;
 import it.cavallium.dbengine.database.UpdateMode;
 import it.cavallium.dbengine.rpc.current.data.DatabaseOptions;
@@ -33,9 +32,9 @@ import reactor.util.function.Tuple2;
 
 public interface DiskCache extends URLsDiskHandler, URLsWriter, SafeCloseable, IBackuppable {
 
-	void writeMetadataSync(URL url, Metadata metadata);
+	void writeMetadataSync(URL url, Metadata metadata, boolean force);
 
-	void writeContentBlockSync(URL url, DataBlock dataBlock);
+	void writeContentBlockSync(URL url, DataBlock dataBlock, boolean force);
 
 	Stream<DataBlock> requestContentSync(URL url);
 
