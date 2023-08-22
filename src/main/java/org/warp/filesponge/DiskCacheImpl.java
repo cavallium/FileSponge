@@ -70,7 +70,7 @@ class DiskCacheImpl implements DiskCache {
 	@Override
 	public void writeMetadataSync(URL url, Metadata metadata, boolean force) {
 		// Check if this cache should cache the url, otherwise do nothing
-		if (!shouldCache.test(url)) return;
+		if (!force && !shouldCache.test(url)) return;
 
 		var key = serializeUrl(url);
 
@@ -130,7 +130,7 @@ class DiskCacheImpl implements DiskCache {
 	@Override
 	public void writeContentBlockSync(URL url, DataBlock dataBlock, boolean force) {
 		// Check if this cache should cache the url, otherwise do nothing
-		if (!shouldCache.test(url)) {
+		if (!force && !shouldCache.test(url)) {
 			return;
 		}
 
