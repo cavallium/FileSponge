@@ -134,12 +134,12 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.11.0</version>
 				<configuration>
-					<release>22</release>
+					<release>23</release>
 					<annotationProcessorPaths>
 						<annotationProcessorPath>
 							<groupId>io.soabase.record-builder</groupId>
 							<artifactId>record-builder-processor</artifactId>
-							<version>33</version>
+							<version>43</version>
 						</annotationProcessorPath>
 					</annotationProcessorPaths>
 					<annotationProcessors>
