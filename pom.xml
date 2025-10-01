@@ -134,7 +134,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.14.0</version>
 				<configuration>
-					<release>23</release>
+					<release>25</release>
 					<annotationProcessorPaths>
 						<annotationProcessorPath>
 							<groupId>io.soabase.record-builder</groupId>
