@@ -56,6 +56,18 @@ public class FileSponge implements URLsHandlerCached {
 				.subscribeOn(Schedulers.boundedElastic());
 	}
 
+	public Mono<Void> unregisterSource(URLsHandler urLsHandler) {
+		return Mono
+				.<Void>fromRunnable(() -> {
+					synchronized (structuresLock) {
+						var clone = urlsHandlers.clone();
+						clone.remove(urLsHandler);
+						this.urlsHandlers = clone;
+					}
+				})
+				.subscribeOn(Schedulers.boundedElastic());
+	}
+
 	public <T extends URLsDiskHandler & URLsWriter> Mono<Void> registerCache(T urlsCache) {
 		return Mono
 				.<Void>fromRunnable(() -> {
