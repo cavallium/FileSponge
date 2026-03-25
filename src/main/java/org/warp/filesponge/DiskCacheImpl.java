@@ -50,15 +50,21 @@ class DiskCacheImpl implements DiskCache {
 	private final LLKeyValueDatabase ownedDb;
 	private final LLDictionary fileContent;
 	private final LLDictionary fileMetadata;
+	private final LLDictionary fileAliases;
+	private final LLDictionary fileHashes;
 	private final Predicate<URL> shouldCache;
 
 	DiskCacheImpl(@Nullable LLKeyValueDatabase ownedDb,
 			LLDictionary fileContent,
 			LLDictionary fileMetadata,
+			LLDictionary fileAliases,
+			LLDictionary fileHashes,
 			Predicate<URL> shouldCache) {
 		this.ownedDb = ownedDb;
 		this.fileContent = fileContent;
 		this.fileMetadata = fileMetadata;
+		this.fileAliases = fileAliases;
+		this.fileHashes = fileHashes;
 		this.diskMetadataSerializer = new DiskMetadataSerializer();
 		this.shouldCache = shouldCache;
 	}
@@ -78,7 +84,7 @@ class DiskCacheImpl implements DiskCache {
 		// Check if this cache should cache the url, otherwise do nothing
 		if (!force && !shouldCache.test(url)) return;
 
-		var key = serializeUrl(url);
+		var key = resolveAliasKey(serializeUrl(url));
 
 		fileMetadata.update(key, oldValue -> {
 			if (oldValue != null) {
@@ -104,6 +110,48 @@ class DiskCacheImpl implements DiskCache {
 			throw new IllegalStateException("Failed to serialize url", ex);
 		}
 		return output.asList();
+	}
+
+	private Buf resolveAliasKey(Buf key) {
+		Buf currentKey = key;
+		int depth = 0;
+		while (depth < 5) {
+			Buf alias = fileAliases.get(null, currentKey);
+			if (alias == null) {
+				return currentKey;
+			}
+			currentKey = alias;
+			depth++;
+		}
+		return currentKey;
+	}
+
+	@Override
+	public void writeAliasSync(URL originalUrl, URL aliasTo) {
+		Buf originalKey = serializeUrl(originalUrl);
+		Buf aliasKey = serializeUrl(aliasTo);
+		fileAliases.put(originalKey, aliasKey, LLDictionaryResultType.VOID);
+	}
+
+	@Override
+	public void writeAliasToBufSync(URL originalUrl, Buf aliasToKey) {
+		Buf originalKey = serializeUrl(originalUrl);
+		fileAliases.put(originalKey, aliasToKey, LLDictionaryResultType.VOID);
+	}
+
+	@Override
+	public void writeHashSync(URL url, long hash) {
+		Buf urlKey = serializeUrl(url);
+		var out = BufDataOutput.create(Long.BYTES);
+		out.writeLong(hash);
+		fileHashes.put(out.asList(), urlKey, LLDictionaryResultType.VOID);
+	}
+
+	@Override
+	public Buf getUrlByHashSync(long hash) {
+		var out = BufDataOutput.create(Long.BYTES);
+		out.writeLong(hash);
+		return fileHashes.get(null, out.asList());
 	}
 
 	private Buf serializeMetadata(DiskMetadata diskMetadata) {
@@ -140,8 +188,8 @@ class DiskCacheImpl implements DiskCache {
 			return;
 		}
 
-		Buf urlKey = serializeUrl(url);
-		Buf blockKey = getBlockKey(url, dataBlock.getId());
+		Buf urlKey = resolveAliasKey(serializeUrl(url));
+		Buf blockKey = getBlockKey(urlKey, dataBlock.getId());
 
 		fileContent.put(blockKey, dataBlock.getData(), LLDictionaryResultType.VOID);
 		fileMetadata.update(urlKey, prevBytes -> {
@@ -179,6 +227,22 @@ class DiskCacheImpl implements DiskCache {
 	}
 
 	@Override
+	public void deleteContentSync(URL url) {
+		Buf originalKey = serializeUrl(url);
+		var prevBytes = fileMetadata.get(null, originalKey);
+		if (prevBytes != null) {
+			DiskMetadata prevMeta = deserializeMetadata(prevBytes);
+			for (int blockId = 0; blockId < prevMeta.downloadedBlocks().size(); blockId++) {
+				if (prevMeta.isDownloadedBlock(blockId)) {
+					Buf blockKey = getBlockKey(originalKey, blockId);
+					fileContent.remove(blockKey, LLDictionaryResultType.VOID);
+				}
+			}
+			fileMetadata.remove(originalKey, LLDictionaryResultType.VOID);
+		}
+	}
+
+	@Override
 	public Flux<DataBlock> requestContent(URL url) {
 		return Flux.fromStream(() -> requestContentSync(url)).subscribeOn(Schedulers.boundedElastic());
 	}
@@ -198,7 +262,8 @@ class DiskCacheImpl implements DiskCache {
 					if (!blockMeta.downloaded) {
 						return null;
 					}
-					var blockKey = getBlockKey(url, blockMeta.blockId);
+					Buf urlKey = resolveAliasKey(serializeUrl(url));
+					var blockKey = getBlockKey(urlKey, blockMeta.blockId);
 					var data = fileContent.get(null, blockKey);
 					long blockOffset = getBlockOffset(blockMeta.blockId);
 					int blockLength = data.size();
@@ -216,26 +281,11 @@ class DiskCacheImpl implements DiskCache {
 				}).filter(Objects::nonNull);
 	}
 
-	private <T extends URL> Buf getBlockKey(T url, int blockId) {
-		//noinspection unchecked
-		URLSerializer<T> urlSerializer = (URLSerializer<T>) url.getSerializer();
-
-		int urlSizeHint = urlSerializer.getSerializedSizeHint();
-		if (urlSizeHint == -1) {
-			urlSizeHint = 64;
-		}
-
-		var sizeHint = urlSizeHint + Integer.BYTES;
+	private Buf getBlockKey(Buf urlKey, int blockId) {
+		var sizeHint = urlKey.size() + Integer.BYTES;
 		var out = BufDataOutput.create(sizeHint);
-
-		try {
-			urlSerializer.serialize(url, out);
-		} catch (SerializationException ex) {
-			throw new IllegalStateException("Failed to serialize url", ex);
-		}
-
+		out.writeBytes(urlKey);
 		out.writeInt(blockId);
-
 		return out.asList();
 	}
 
@@ -250,7 +300,7 @@ class DiskCacheImpl implements DiskCache {
 
 	@Override
 	public DiskMetadata requestDiskMetadataSync(URL url) {
-		Buf urlKey = serializeUrl(url);
+		Buf urlKey = resolveAliasKey(serializeUrl(url));
 		var prevBytes = fileMetadata.get(null, urlKey);
 		if (prevBytes != null) {
 			return deserializeMetadata(prevBytes);
@@ -289,7 +339,7 @@ class DiskCacheImpl implements DiskCache {
 
 	@Override
 	public Tuple2<Metadata, Stream<DataBlock>> requestSync(URL url) {
-		Buf urlKey = serializeUrl(url);
+		Buf urlKey = resolveAliasKey(serializeUrl(url));
 		var serialized = fileMetadata.get(null, urlKey);
 		if (serialized == null) {
 			return null;

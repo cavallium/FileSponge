@@ -37,6 +37,16 @@ public interface DiskCache extends URLsDiskHandler, URLsWriter, SafeCloseable, I
 
 	void writeContentBlockSync(URL url, DataBlock dataBlock, boolean force);
 
+	void deleteContentSync(URL url);
+
+	void writeAliasSync(URL originalUrl, URL aliasTo);
+
+	void writeAliasToBufSync(URL originalUrl, it.cavallium.buffer.Buf aliasToKey);
+
+	void writeHashSync(URL url, long hash);
+
+	it.cavallium.buffer.Buf getUrlByHashSync(long hash);
+
 	Stream<DataBlock> requestContentSync(URL url);
 
 	DiskMetadata requestDiskMetadataSync(URL url);
@@ -52,17 +62,21 @@ public interface DiskCache extends URLsDiskHandler, URLsWriter, SafeCloseable, I
 			DatabaseOptions databaseOptions,
 			Predicate<URL> shouldCache) {
 		var db = databaseConnection.getDatabase(dbName,
-				List.of(ColumnUtils.dictionary("file-content"), ColumnUtils.dictionary("file-metadata")),
+				List.of(ColumnUtils.dictionary("file-content"), ColumnUtils.dictionary("file-metadata"), ColumnUtils.dictionary("file-aliases"), ColumnUtils.dictionary("file-hashes")),
 				databaseOptions
 		);
 		var dict1 = db.getDictionary("file-content", UpdateMode.ALLOW);
 		var dict2 = db.getDictionary("file-metadata", UpdateMode.ALLOW);
-		return new DiskCacheImpl(db, dict1, dict2, shouldCache);
+		var dict3 = db.getDictionary("file-aliases", UpdateMode.ALLOW);
+		var dict4 = db.getDictionary("file-hashes", UpdateMode.ALLOW);
+		return new DiskCacheImpl(db, dict1, dict2, dict3, dict4, shouldCache);
 	}
 
 	static DiskCache openCustom(LLDictionary fileContent,
 			LLDictionary fileMetadata,
+			LLDictionary fileAliases,
+			LLDictionary fileHashes,
 			Predicate<URL> shouldCache) {
-		return new DiskCacheImpl(null, fileContent, fileMetadata, shouldCache);
+		return new DiskCacheImpl(null, fileContent, fileMetadata, fileAliases, fileHashes, shouldCache);
 	}
 }
