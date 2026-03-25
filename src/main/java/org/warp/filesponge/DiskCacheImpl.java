@@ -27,6 +27,7 @@ import it.cavallium.buffer.BufDataOutput;
 import it.cavallium.dbengine.database.LLDictionary;
 import it.cavallium.dbengine.database.LLDictionaryResultType;
 import it.cavallium.dbengine.database.LLKeyValueDatabase;
+import it.cavallium.dbengine.database.LLRange;
 import it.cavallium.dbengine.database.UpdateReturnMode;
 import it.cavallium.dbengine.database.serialization.SerializationException;
 import it.cavallium.dbengine.utils.StreamUtils;
@@ -60,6 +61,11 @@ class DiskCacheImpl implements DiskCache {
 		this.fileMetadata = fileMetadata;
 		this.diskMetadataSerializer = new DiskMetadataSerializer();
 		this.shouldCache = shouldCache;
+	}
+
+	@Override
+	public Mono<Long> count(boolean precise) {
+		return Mono.fromCallable(() -> this.fileMetadata.sizeRange(null, LLRange.all(), !precise)).subscribeOn(Schedulers.boundedElastic());
 	}
 
 	@Override

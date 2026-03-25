@@ -28,6 +28,7 @@ import it.cavallium.dbengine.rpc.current.data.DatabaseOptions;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
 public interface DiskCache extends URLsDiskHandler, URLsWriter, SafeCloseable, IBackuppable {
@@ -43,6 +44,8 @@ public interface DiskCache extends URLsDiskHandler, URLsWriter, SafeCloseable, I
 	Metadata requestMetadataSync(URL url);
 
 	Tuple2<Metadata, Stream<DataBlock>> requestSync(URL url);
+
+	Mono<Long> count(boolean precise);
 
 	static DiskCache open(LLDatabaseConnection databaseConnection,
 			String dbName,
