@@ -18,9 +18,11 @@
 
 package org.warp.filesponge;
 
+import it.cavallium.buffer.Buf;
 import it.cavallium.dbengine.client.IBackuppable;
 import it.cavallium.dbengine.database.ColumnUtils;
 import it.cavallium.dbengine.database.LLDatabaseConnection;
+import it.cavallium.dbengine.database.LLKeyValueDatabase;
 import it.cavallium.dbengine.database.LLDictionary;
 import it.cavallium.dbengine.database.SafeCloseable;
 import it.cavallium.dbengine.database.UpdateMode;
@@ -57,12 +59,23 @@ public interface DiskCache extends URLsDiskHandler, URLsWriter, SafeCloseable, I
 
 	Mono<Long> count(boolean precise);
 
+	/**
+	 * todo: remove, to fix a temporary bug
+	 * @param targetValue
+	 */
+	void tidyDatabaseUnsafe(Buf targetValue);
+
+	/**
+	 * todo: remove, to fix a temporary bug
+	 */
+	LLKeyValueDatabase getOwnedDbUnsafe();
+
 	static DiskCache open(LLDatabaseConnection databaseConnection,
 			String dbName,
 			DatabaseOptions databaseOptions,
 			Predicate<URL> shouldCache) {
 		var db = databaseConnection.getDatabase(dbName,
-				List.of(ColumnUtils.dictionary("file-content"), ColumnUtils.dictionary("file-metadata"), ColumnUtils.dictionary("file-aliases"), ColumnUtils.dictionary("file-hashes")),
+				List.of(ColumnUtils.dictionary("file-content"), ColumnUtils.dictionary("file-metadata"), ColumnUtils.dictionary("file-aliases"), ColumnUtils.dictionary("file-hashes"), ColumnUtils.special("atomic_longs")),
 				databaseOptions
 		);
 		var dict1 = db.getDictionary("file-content", UpdateMode.ALLOW);

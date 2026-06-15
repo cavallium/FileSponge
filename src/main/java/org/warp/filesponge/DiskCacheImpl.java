@@ -75,6 +75,11 @@ class DiskCacheImpl implements DiskCache {
 	}
 
 	@Override
+	public LLKeyValueDatabase getOwnedDbUnsafe() {
+		return ownedDb;
+	}
+
+	@Override
 	public Mono<Void> writeMetadata(URL url, Metadata metadata, boolean force) {
 		return Mono.<Void>fromRunnable(() -> writeMetadataSync(url, metadata, force)).subscribeOn(Schedulers.boundedElastic());
 	}
@@ -356,6 +361,31 @@ class DiskCacheImpl implements DiskCache {
 			return Tuples.of(meta, this.requestContentSync(url));
 		} else {
 			return Tuples.of(meta, Stream.empty());
+		}
+	}
+
+	@Override
+	public void tidyDatabaseUnsafe(Buf targetValue) {
+		java.util.stream.IntStream.range(0, 256).parallel().forEach(i -> {
+			Buf min = Buf.wrap(new byte[] { 0, (byte) i });
+			Buf max = i == 255 ? Buf.wrap(new byte[] { 1 }) : Buf.wrap(new byte[] { 0, (byte) (i + 1) });
+
+			try (var stream = fileAliases.getRange(null, LLRange.of(min, max), false, false)) {
+				stream.forEach(entry -> {
+					if (targetValue.equals(entry.getValue())) {
+						fileAliases.remove(entry.getKey(), LLDictionaryResultType.VOID);
+					}
+				});
+			}
+		});
+		
+		// Handle keys with length >= 256
+		try (var stream = fileAliases.getRange(null, LLRange.from(Buf.wrap(new byte[] { 1 })), false, false)) {
+			stream.forEach(entry -> {
+				if (targetValue.equals(entry.getValue())) {
+					fileAliases.remove(entry.getKey(), LLDictionaryResultType.VOID);
+				}
+			});
 		}
 	}
 
