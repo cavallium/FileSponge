@@ -56,10 +56,10 @@ public record DiskMetadata(long size, BooleanArrayList downloadedBlocks) {
 	}
 
 	public static int getBlocksCount(long size, int blockSize) {
-		if (size == -1L) {
+		if (size == -1L || size == 0) {
 			return 0;
 		}
-		return toIntExact((size + (blockSize - size % blockSize)) / blockSize);
+		return toIntExact((size + blockSize - 1) / blockSize);
 	}
 
 	public Metadata asMetadata() {

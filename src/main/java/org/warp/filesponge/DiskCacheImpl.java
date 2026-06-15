@@ -88,7 +88,13 @@ class DiskCacheImpl implements DiskCache {
 
 		fileMetadata.update(key, oldValue -> {
 			if (oldValue != null) {
-				return oldValue;
+				DiskMetadata prevMeta = deserializeMetadata(oldValue);
+				if (prevMeta.size() == metadata.size()) {
+					return oldValue;
+				}
+				return serializeMetadata(new DiskMetadata(metadata.size(),
+						BooleanArrayList.wrap(new boolean[DiskMetadata.getBlocksCount(metadata.size(), BLOCK_SIZE)])
+				));
 			} else {
 				return serializeMetadata(new DiskMetadata(metadata.size(),
 						BooleanArrayList.wrap(new boolean[DiskMetadata.getBlocksCount(metadata.size(), BLOCK_SIZE)])
@@ -216,7 +222,7 @@ class DiskCacheImpl implements DiskCache {
 					result = prevMeta;
 				}
 			} else {
-				result = null;
+				throw new IllegalStateException("Metadata not found for url key: " + urlKey);
 			}
 			if (result != null) {
 				return serializeMetadata(result);
@@ -228,17 +234,17 @@ class DiskCacheImpl implements DiskCache {
 
 	@Override
 	public void deleteContentSync(URL url) {
-		Buf originalKey = serializeUrl(url);
-		var prevBytes = fileMetadata.get(null, originalKey);
+		Buf urlKey = resolveAliasKey(serializeUrl(url));
+		var prevBytes = fileMetadata.get(null, urlKey);
 		if (prevBytes != null) {
 			DiskMetadata prevMeta = deserializeMetadata(prevBytes);
 			for (int blockId = 0; blockId < prevMeta.downloadedBlocks().size(); blockId++) {
 				if (prevMeta.isDownloadedBlock(blockId)) {
-					Buf blockKey = getBlockKey(originalKey, blockId);
+					Buf blockKey = getBlockKey(urlKey, blockId);
 					fileContent.remove(blockKey, LLDictionaryResultType.VOID);
 				}
 			}
-			fileMetadata.remove(originalKey, LLDictionaryResultType.VOID);
+			fileMetadata.remove(urlKey, LLDictionaryResultType.VOID);
 		}
 	}
 
