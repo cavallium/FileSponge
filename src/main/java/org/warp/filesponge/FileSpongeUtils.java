@@ -52,8 +52,11 @@ public class FileSpongeUtils {
 				if (!(throwable instanceof NoSuchElementException)) {
 					var differentErrors = multiple.stream()
 							.filter(e -> !(e instanceof NoSuchElementException))
-							.toArray(Throwable[]::new);
-					return Mono.error(Exceptions.multiple(differentErrors));
+							.toList();
+					if (differentErrors.size() == 1) {
+						return Mono.error(differentErrors.getFirst());
+					}
+					return Mono.error(Exceptions.multiple(differentErrors.toArray(Throwable[]::new)));
 				}
 			}
 			return Mono.empty();
