@@ -22,13 +22,13 @@ import static java.lang.Math.toIntExact;
 import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 
 import it.cavallium.buffer.Buf;
-import it.cavallium.buffer.BufDataInput;
 import it.cavallium.buffer.BufDataOutput;
 import it.cavallium.dbengine.database.LLDictionary;
 import it.cavallium.dbengine.database.LLDictionaryResultType;
 import it.cavallium.dbengine.database.LLKeyValueDatabase;
 import it.cavallium.dbengine.database.LLRange;
 import it.cavallium.dbengine.database.UpdateReturnMode;
+import it.cavallium.dbengine.database.serialization.DatabaseDataInput;
 import it.cavallium.dbengine.database.serialization.SerializationException;
 import it.cavallium.dbengine.utils.StreamUtils;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
@@ -179,7 +179,7 @@ class DiskCacheImpl implements DiskCache {
 
 	private DiskMetadata deserializeMetadata(Buf prevBytes) {
 		try {
-			return diskMetadataSerializer.deserialize(BufDataInput.create(prevBytes));
+			return diskMetadataSerializer.deserialize(DatabaseDataInput.create(prevBytes));
 		} catch (SerializationException ex) {
 			throw new IllegalStateException("Failed to deserialize metadata", ex);
 		}

@@ -8,6 +8,7 @@ import it.cavallium.buffer.BufDataOutput;
 import it.cavallium.dbengine.database.LLDictionary;
 import it.cavallium.dbengine.database.LLDictionaryResultType;
 import it.cavallium.dbengine.database.UpdateReturnMode;
+import it.cavallium.dbengine.database.serialization.DatabaseDataInput;
 import it.cavallium.dbengine.database.serialization.SerializationFunction;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import java.util.function.Function;
@@ -272,7 +273,7 @@ public class DiskCacheImplTest {
 
     private DiskMetadata deserializeMetadata(Buf buf) {
         try {
-            return new DiskMetadata.DiskMetadataSerializer().deserialize(it.cavallium.buffer.BufDataInput.create(buf));
+            return new DiskMetadata.DiskMetadataSerializer().deserialize(DatabaseDataInput.create(buf));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
