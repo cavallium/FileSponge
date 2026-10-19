@@ -254,6 +254,27 @@ class DiskCacheImpl implements DiskCache {
 	}
 
 	@Override
+	public Mono<DataBlock> requestContentBlock(URL url, int blockId) {
+		return Mono.fromCallable(() -> requestContentBlockSync(url, blockId)).subscribeOn(Schedulers.boundedElastic());
+	}
+
+	@Override
+	public DataBlock requestContentBlockSync(URL url, int blockId) {
+		if (blockId < 0) throw new IllegalArgumentException("Negative block id");
+		var key = resolveAliasKey(serializeUrl(url));
+		var bytes = fileMetadata.get(null, key);
+		if (bytes == null) return null;
+		var metadata = deserializeMetadata(bytes);
+		if (metadata.size() < 0 || getBlockOffset(blockId) >= metadata.size()
+				|| !metadata.isDownloadedBlock(blockId)) return null;
+		var data = fileContent.get(null, getBlockKey(key, blockId));
+		if (data == null) return null;
+		var block = DataBlock.of(getBlockOffset(blockId), data.size(), data);
+		FileSponge.validateBlock(block, blockId, metadata.size());
+		return block;
+	}
+
+	@Override
 	public Flux<DataBlock> requestContent(URL url) {
 		return Flux.fromStream(() -> requestContentSync(url)).subscribeOn(Schedulers.boundedElastic());
 	}

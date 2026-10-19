@@ -37,6 +37,40 @@ public class DiskCacheImplTest {
     }
 
     @Test
+    void readsOneBlockFromPartialCacheThroughAliasWithoutPrefixReads() {
+        URL original = mockUrl("original-block");
+        URL alias = mockUrl("alias-block");
+        Buf key = serialize(original);
+        when(fileAliases.get(null, serialize(alias))).thenReturn(key);
+        when(fileMetadata.get(null, key)).thenReturn(serializeMetadata(new DiskMetadata(
+                3L * FileSponge.BLOCK_SIZE + 7, new BooleanArrayList(new boolean[]{false, false, false, true}))));
+        var out = BufDataOutput.create(key.size() + Integer.BYTES);
+        out.writeBytes(key);
+        out.writeInt(3);
+        var blockKey = out.asList();
+        when(fileContent.get(null, blockKey)).thenReturn(Buf.wrap(new byte[7]));
+
+        var block = diskCache.requestContentBlockSync(alias, 3);
+        assertEquals(3L * FileSponge.BLOCK_SIZE, block.getOffset());
+        assertEquals(7, block.getLength());
+        verify(fileContent).get(null, blockKey);
+        verifyNoMoreInteractions(fileContent);
+        assertNull(diskCache.requestContentBlockSync(alias, 2));
+        assertNull(diskCache.requestContentBlockSync(alias, 4));
+        verifyNoMoreInteractions(fileContent);
+    }
+
+    @Test
+    void rejectsTruncatedCachedBlock() {
+        URL url = mockUrl("truncated-block");
+        Buf key = serialize(url);
+        when(fileMetadata.get(null, key)).thenReturn(serializeMetadata(new DiskMetadata(
+                7, new BooleanArrayList(new boolean[]{true}))));
+        when(fileContent.get(eq(null), any())).thenReturn(Buf.wrap(new byte[6]));
+        assertThrows(IllegalStateException.class, () -> diskCache.requestContentBlockSync(url, 0));
+    }
+
+    @Test
     void testDeleteWithAlias() {
         URL originalUrl = mockUrl("original");
         URL aliasUrl = mockUrl("alias");

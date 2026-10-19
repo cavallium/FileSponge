@@ -27,6 +27,11 @@ public interface URLsHandler {
 
 	Flux<DataBlock> requestContent(URL url);
 
+	/** Reads exactly one block without downloading preceding blocks. Empty means unsupported or unavailable. */
+	default Mono<DataBlock> requestContentBlock(URL url, int blockId) {
+		return blockId < 0 ? Mono.error(new IllegalArgumentException("Negative block id")) : Mono.empty();
+	}
+
 	/**
 	 * Get metadata from cached sources, if not found, retrieve it online
 	 */
@@ -41,6 +46,11 @@ public interface URLsHandler {
 			@Override
 			public Flux<DataBlock> requestContent() {
 				return URLsHandler.this.requestContent(url);
+			}
+
+			@Override
+			public Mono<DataBlock> requestContentBlock(int blockId) {
+				return URLsHandler.this.requestContentBlock(url, blockId);
 			}
 
 			@Override

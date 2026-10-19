@@ -51,6 +51,8 @@ public interface DiskCache extends URLsDiskHandler, URLsWriter, SafeCloseable, I
 
 	Stream<DataBlock> requestContentSync(URL url);
 
+	DataBlock requestContentBlockSync(URL url, int blockId);
+
 	DiskMetadata requestDiskMetadataSync(URL url);
 
 	Metadata requestMetadataSync(URL url);

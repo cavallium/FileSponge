@@ -38,6 +38,11 @@ public interface URLsDiskHandler extends URLsHandler {
 			}
 
 			@Override
+			public Mono<DataBlock> requestContentBlock(int blockId) {
+				return URLsDiskHandler.this.requestContentBlock(url, blockId);
+			}
+
+			@Override
 			public Mono<Metadata> requestMetadata() {
 				return URLsDiskHandler.this.requestMetadata(url);
 			}

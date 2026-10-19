@@ -27,6 +27,10 @@ public interface URLHandler {
 
 	Flux<DataBlock> requestContent();
 
+	default Mono<DataBlock> requestContentBlock(int blockId) {
+		return blockId < 0 ? Mono.error(new IllegalArgumentException("Negative block id")) : Mono.empty();
+	}
+
 	Mono<Metadata> requestMetadata();
 
 	default Mono<Tuple2<Metadata, Flux<DataBlock>>> request() {

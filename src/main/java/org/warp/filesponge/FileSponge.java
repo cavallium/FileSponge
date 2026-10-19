@@ -85,6 +85,43 @@ public class FileSponge implements URLsHandlerCached {
 	}
 
 	@Override
+	public Mono<DataBlock> requestContentBlock(URL url, int blockId) {
+		return Mono.defer(() -> {
+			if (blockId < 0) return Mono.error(new IllegalArgumentException("Negative block id"));
+			return requestMetadata(url).flatMap(metadata -> {
+				if (metadata.size() < 0) return Mono.error(new IllegalStateException("Block reads require known file size"));
+				if ((long) blockId * BLOCK_SIZE >= metadata.size()) return Mono.empty();
+				return Flux.fromIterable(cacheAccess)
+						.concatMap(cache -> cache.requestContentBlock(url, blockId), 1)
+						.next()
+						.switchIfEmpty(Mono.defer(() -> Flux.fromIterable(urlsHandlers)
+								.concatMap(source -> Mono.defer(() -> source.requestContentBlock(url, blockId))
+										.onErrorResume(BlockReadUnavailableException.class, ignored -> Mono.empty()), 1)
+								.next()
+								.switchIfEmpty(Mono.error(new BlockReadUnavailableException("No provider can read the requested file block")))
+								.flatMap(block -> {
+									validateBlock(block, blockId, metadata.size());
+									return Flux.fromIterable(cacheWrite)
+											.concatMap(cache -> cache.writeMetadata(url, metadata, false)
+													.then(cache.writeContentBlock(url, block, false)), 1)
+											.then(Mono.just(block));
+								})))
+						.doOnNext(block -> validateBlock(block, blockId, metadata.size()));
+			});
+		});
+	}
+
+	public static void validateBlock(DataBlock block, int blockId, long size) {
+		long offset = (long) blockId * BLOCK_SIZE;
+		if (blockId < 0 || size < 0 || offset >= size || block == null
+				|| block.getOffset() != offset || block.getData() == null
+				|| block.getLength() != Math.min(BLOCK_SIZE, size - offset)
+				|| block.getData().size() != block.getLength()) {
+			throw new IllegalStateException("Invalid or truncated file block " + blockId);
+		}
+	}
+
+	@Override
 	public Flux<DataBlock> requestContent(URL url) {
 		AtomicBoolean alreadyPrintedDebug = new AtomicBoolean(false);
 		return Mono
