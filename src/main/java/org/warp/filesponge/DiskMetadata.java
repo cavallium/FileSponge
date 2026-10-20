@@ -37,7 +37,7 @@ public record DiskMetadata(long size, BooleanArrayList downloadedBlocks) {
 		// Ensure blocks count is valid by calling getBlocksCount()
 		getBlocksCount();
 		// It's fully downloaded if every block is true
-		downloadedFullyVal = !this.downloadedBlocks.contains(false);
+		downloadedFullyVal = size >= 0 && !this.downloadedBlocks.contains(false);
 		return downloadedFullyVal;
 	}
 

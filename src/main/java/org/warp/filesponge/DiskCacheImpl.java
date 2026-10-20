@@ -18,7 +18,6 @@
 
 package org.warp.filesponge;
 
-import static java.lang.Math.toIntExact;
 import static org.warp.filesponge.FileSponge.BLOCK_SIZE;
 
 import it.cavallium.buffer.Buf;
@@ -30,10 +29,9 @@ import it.cavallium.dbengine.database.LLRange;
 import it.cavallium.dbengine.database.UpdateReturnMode;
 import it.cavallium.dbengine.database.serialization.DatabaseDataInput;
 import it.cavallium.dbengine.database.serialization.SerializationException;
-import it.cavallium.dbengine.utils.StreamUtils;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
-import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.Nullable;
 import org.warp.filesponge.DiskMetadata.DiskMetadataSerializer;
@@ -296,36 +294,18 @@ class DiskCacheImpl implements DiskCache {
 
 	@Override
 	public Stream<DataBlock> requestContentSync(URL url) {
-		record BlockMeta(int blockId, boolean downloaded) {}
 		var meta = this.requestDiskMetadataSync(url);
 		if (meta == null || !meta.isDownloadedFully()) {
 			return Stream.empty();
 		}
-		return StreamUtils.indexed(meta.downloadedBlocks().stream(),
-						(downloaded, blockId) -> new BlockMeta(toIntExact(blockId), downloaded)
-				)
-				// Get only downloaded blocks
-				.filter(BlockMeta::downloaded).map(blockMeta -> {
-					if (!blockMeta.downloaded) {
-						return null;
-					}
-					Buf urlKey = resolveAliasKey(serializeUrl(url));
-					var blockKey = getBlockKey(urlKey, blockMeta.blockId);
-					var data = fileContent.get(null, blockKey);
-					long blockOffset = getBlockOffset(blockMeta.blockId);
-					int blockLength = data.size();
-					if (meta.size() != -1) {
-						if (blockOffset + blockLength >= meta.size()) {
-							if (blockOffset + blockLength > meta.size()) {
-								throw new IllegalStateException("Overflowed data size");
-							}
-						} else {
-							// Intermediate blocks must be of max size
-							assert data.size() == BLOCK_SIZE;
-						}
-					}
-					return DataBlock.of(blockOffset, blockLength, data);
-				}).filter(Objects::nonNull);
+		return IntStream.range(0, meta.downloadedBlocks().size()).mapToObj(blockId -> {
+			Buf urlKey = resolveAliasKey(serializeUrl(url));
+			var data = fileContent.get(null, getBlockKey(urlKey, blockId));
+			if (data == null) throw new IllegalStateException("Missing cached file block " + blockId);
+			var block = DataBlock.of(getBlockOffset(blockId), data.size(), data);
+			FileSponge.validateBlock(block, blockId, meta.size());
+			return block;
+		});
 	}
 
 	private Buf getBlockKey(Buf urlKey, int blockId) {

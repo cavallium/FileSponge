@@ -11,6 +11,7 @@ import it.cavallium.dbengine.database.UpdateReturnMode;
 import it.cavallium.dbengine.database.serialization.DatabaseDataInput;
 import it.cavallium.dbengine.database.serialization.SerializationFunction;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,9 @@ import java.util.function.Predicate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 
 public class DiskCacheImplTest {
 
@@ -161,6 +165,138 @@ public class DiskCacheImplTest {
                 DataBlock.of(0, 3, Buf.wrap(new byte[3])), true));
         assertTrue(content.isEmpty());
         assertTrue(metadata.isEmpty());
+    }
+
+    @Test
+    void unknownCachedPrefixFallsBackToProviderUntilMetadataBecomesKnown() {
+        var content = backing(fileContent);
+        backing(fileMetadata);
+        URL url = mockUrl("interrupted-unknown");
+        diskCache.writeMetadataSync(url, new Metadata(-1), true);
+        diskCache.writeContentBlockSync(url, DataBlock.of(0, 2, Buf.wrap(new byte[]{1, 2})), true);
+        assertFalse(diskCache.requestDiskMetadataSync(url).isDownloadedFully());
+        assertEquals(0, diskCache.requestContentSync(url).count());
+        var complete = DataBlock.of(0, 7, Buf.wrap(new byte[]{1, 2, 3, 4, 5, 6, 7}));
+        var provider = mock(URLsHandler.class);
+        var providerKnowsSize = new java.util.concurrent.atomic.AtomicBoolean();
+        when(provider.requestContent(url)).thenReturn(Flux.just(complete).doOnComplete(() -> providerKnowsSize.set(true)));
+        when(provider.requestMetadata(url)).thenReturn(Mono.fromSupplier(() -> new Metadata(providerKnowsSize.get() ? 7 : -1)));
+        var sponge = new FileSponge();
+        sponge.registerCache(diskCache).block(Duration.ofSeconds(5));
+        sponge.registerSource(provider).block(Duration.ofSeconds(5));
+        assertEquals(-1, sponge.requestMetadata(url).block(Duration.ofSeconds(5)).size());
+        assertEquals(List.of(complete), sponge.requestContent(url).collectList().block(Duration.ofSeconds(5)));
+        assertEquals(complete.getData(), content.get(getBlockKey(serialize(url), 0)));
+        assertFalse(diskCache.requestDiskMetadataSync(url).isDownloadedFully(), "Successful bytes do not establish an unknown total size");
+        assertEquals(7, sponge.requestMetadata(url).block(Duration.ofSeconds(5)).size());
+        assertFalse(diskCache.requestDiskMetadataSync(url).isDownloadedFully(), "Known metadata resets block completeness until validated writes finish");
+        assertEquals(List.of(complete), sponge.requestContent(url).collectList().block(Duration.ofSeconds(5)));
+        assertTrue(diskCache.requestDiskMetadataSync(url).isDownloadedFully());
+        assertEquals(7, sponge.requestMetadata(url).block(Duration.ofSeconds(5)).size());
+        assertEquals(List.of(complete), sponge.requestContent(url).collectList().block(Duration.ofSeconds(5)));
+        verify(provider, times(2)).requestMetadata(url);
+        verify(provider, times(2)).requestContent(url);
+        verifyNoMoreInteractions(provider);
+    }
+
+    @Test
+    void unknownProviderBlocksWaitForPriorCacheWriteWhileKnownSizeWritesStayParallel() throws Exception {
+        for (String mode : List.of("unknown", "known", "mixed")) {
+            boolean knownSize = !mode.equals("unknown");
+            boolean parallel = mode.equals("known");
+            setUp();
+            backing(fileContent);
+            backing(fileMetadata);
+            URL url = mockUrl("ordered-unknown-" + mode);
+            diskCache.writeMetadataSync(url, new Metadata(knownSize ? FileSponge.BLOCK_SIZE + 7L : -1), true);
+            var cache = spy(diskCache);
+            var firstWrite = Sinks.<Void>one();
+            var firstStarted = new java.util.concurrent.CountDownLatch(1);
+            var secondStarted = new java.util.concurrent.CountDownLatch(1);
+            var providerStarted = new java.util.concurrent.CountDownLatch(1);
+            var subscribed = new java.util.concurrent.CopyOnWriteArrayList<Integer>();
+            doAnswer(invocation -> {
+                DataBlock block = invocation.getArgument(1);
+                return Mono.defer(() -> {
+                    subscribed.add(block.getId());
+                    if (block.getId() == 0) firstStarted.countDown();
+                    else if (block.getId() == 1) secondStarted.countDown();
+                    return (block.getId() == 0 ? firstWrite.asMono() : Mono.<Void>empty())
+                            .then(Mono.fromRunnable(() -> diskCache.writeContentBlockSync(url, block, false)));
+                });
+            }).when(cache).writeContentBlock(eq(url), any(DataBlock.class), eq(false));
+            var parts = Sinks.many().unicast().<DataBlock>onBackpressureBuffer();
+            var provider = mock(URLsHandler.class);
+            when(provider.requestContent(url)).thenReturn(parts.asFlux().doOnSubscribe(_ -> providerStarted.countDown()));
+            var sponge = new FileSponge();
+            sponge.registerCache(cache).block(Duration.ofSeconds(5));
+            if (mode.equals("mixed")) {
+                var otherContent = mock(LLDictionary.class);
+                var otherMetadata = mock(LLDictionary.class);
+                backing(otherContent);
+                backing(otherMetadata);
+                var unknownCache = new DiskCacheImpl(null, otherContent, otherMetadata, fileAliases, fileHashes, shouldCache);
+                unknownCache.writeMetadataSync(url, new Metadata(-1), true);
+                sponge.registerCache(unknownCache).block(Duration.ofSeconds(5));
+            }
+            sponge.registerSource(provider).block(Duration.ofSeconds(5));
+            var first = DataBlock.of(0, FileSponge.BLOCK_SIZE, Buf.wrap(new byte[FileSponge.BLOCK_SIZE]));
+            var tail = DataBlock.of(FileSponge.BLOCK_SIZE, 7, Buf.wrap(new byte[7]));
+            var result = sponge.requestContent(url).collectList().toFuture();
+            try {
+                assertTrue(providerStarted.await(5, java.util.concurrent.TimeUnit.SECONDS));
+                parts.tryEmitNext(first).orThrow();
+                assertTrue(firstStarted.await(5, java.util.concurrent.TimeUnit.SECONDS));
+                parts.tryEmitNext(tail).orThrow();
+                parts.tryEmitComplete().orThrow();
+                if (parallel) assertTrue(secondStarted.await(5, java.util.concurrent.TimeUnit.SECONDS));
+                else assertFalse(secondStarted.await(100, java.util.concurrent.TimeUnit.MILLISECONDS), "Unknown-size writers must wait for block zero");
+                assertEquals(parallel ? List.of(0, 1) : List.of(0), subscribed);
+                assertFalse(result.isDone(), "Output waits for the first physical cache write");
+                firstWrite.tryEmitEmpty().orThrow();
+                assertEquals(List.of(first, tail), result.get(5, java.util.concurrent.TimeUnit.SECONDS));
+                assertEquals(List.of(0, 1), subscribed);
+                assertEquals(new BooleanArrayList(new boolean[]{true, true}), diskCache.requestDiskMetadataSync(url).downloadedBlocks());
+                assertEquals(knownSize, diskCache.requestDiskMetadataSync(url).isDownloadedFully());
+            } finally { result.cancel(true); }
+        }
+    }
+
+    @Test
+    void unknownEmptyAndPartialMetadataAreIncompleteButKnownEmptyContentIsComplete() {
+        assertFalse(new DiskMetadata(-1, new BooleanArrayList()).isDownloadedFully());
+        assertFalse(new DiskMetadata(-1, new BooleanArrayList(new boolean[]{true})).isDownloadedFully());
+        assertFalse(new DiskMetadata(-1, new BooleanArrayList(new boolean[]{false})).isDownloadedFully());
+        assertTrue(new DiskMetadata(0, new BooleanArrayList()).isDownloadedFully());
+        URL url = mockUrl("known-empty");
+        when(fileMetadata.get(null, serialize(url))).thenReturn(serializeMetadata(new DiskMetadata(0, new BooleanArrayList())));
+        assertEquals(0, diskCache.requestContentSync(url).count());
+        verifyNoInteractions(fileContent);
+    }
+
+    @Test
+    void fullCachedReadsRejectTruncatedFirstOrLastAndMissingBlocks() {
+        var content = backing(fileContent);
+        var metadata = backing(fileMetadata);
+        URL url = mockUrl("corrupted-full-cache");
+        Buf key = serialize(url);
+        metadata.put(key, serializeMetadata(new DiskMetadata(FileSponge.BLOCK_SIZE + 3L,
+                new BooleanArrayList(new boolean[]{true, true}))));
+        for (String corruption : List.of("first", "last", "missing-first", "missing-last")) {
+            content.clear();
+            if (!corruption.equals("missing-first")) content.put(getBlockKey(key, 0),
+                    Buf.wrap(new byte[corruption.equals("first") ? FileSponge.BLOCK_SIZE - 1 : FileSponge.BLOCK_SIZE]));
+            if (!corruption.equals("missing-last")) content.put(getBlockKey(key, 1),
+                    Buf.wrap(new byte[corruption.equals("last") ? 2 : 3]));
+            try (var blocks = diskCache.requestContentSync(url)) {
+                var iterator = blocks.iterator();
+                if (corruption.equals("last") || corruption.equals("missing-last")) {
+                    assertEquals(FileSponge.BLOCK_SIZE, iterator.next().getLength());
+                }
+                var error = assertThrows(IllegalStateException.class, iterator::next);
+                assertTrue(error.getMessage().contains(corruption.startsWith("missing") ? "Missing cached file block" : "Invalid or truncated file block"));
+            }
+        }
     }
 
     @Test
