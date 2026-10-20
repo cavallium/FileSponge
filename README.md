@@ -31,7 +31,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
     <groupId>org.warp.filesponge</groupId>
     <artifactId>FileSponge</artifactId>
-    <version>0.3.4</version>
+    <version>0.3.5</version>
 </dependency>
 ```
 

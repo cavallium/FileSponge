@@ -23,6 +23,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Flux;
@@ -145,17 +146,22 @@ public class FileSponge implements URLsHandlerCached {
 							var uh = this.urlsHandlers;
 							List<Flux<DataBlock>> contentRequestsAndCaching = new ArrayList<>(uh.size());
 							for (URLsHandler urlsHandler : uh) {
-								contentRequestsAndCaching.add(urlsHandler
-										.requestContent(url)
-										.concatMap(dataBlock -> {
-											var cw = this.cacheWrite;
-											List<Mono<Void>> cacheWriteActions = new ArrayList<>(cw.size());
-											for (URLsWriter urlsWriter : cw) {
-												cacheWriteActions.add(urlsWriter.writeContentBlock(url, dataBlock, false));
-											}
-											return Mono.whenDelayError(cacheWriteActions).thenReturn(dataBlock);
-										})
-								);
+								var writers = this.cacheWrite;
+								contentRequestsAndCaching.add(Flux.fromIterable(writers)
+										.concatMap(writer -> ((URLsDiskHandler) writer).requestMetadata(url)
+												.map(metadata -> metadata.size() >= 0).defaultIfEmpty(false), 1)
+										.all(Boolean::booleanValue)
+										.flatMapMany(knownSizes -> {
+											Function<DataBlock, Mono<DataBlock>> writeBlock = dataBlock -> {
+												List<Mono<Void>> cacheWriteActions = new ArrayList<>(writers.size());
+												for (URLsWriter urlsWriter : writers) {
+													cacheWriteActions.add(urlsWriter.writeContentBlock(url, dataBlock, false));
+												}
+												return Mono.whenDelayError(cacheWriteActions).thenReturn(dataBlock);
+											};
+											var parts = urlsHandler.requestContent(url);
+											return knownSizes ? parts.flatMapSequential(writeBlock) : parts.concatMap(writeBlock, 1);
+										}));
 							}
 							return contentRequestsAndCaching;
 						})

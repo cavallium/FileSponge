@@ -19,7 +19,7 @@ class FileSpongeStreamTest {
     }
 
     @Test
-    void existingMetadataStillRequiresOrderedBlockWrites() {
+    void existingKnownMetadataAllowsConcurrentBlockWrites() {
         verifyStreamWrites(true);
     }
 
@@ -50,7 +50,7 @@ class FileSpongeStreamTest {
         sponge.registerCache(cache).block();
         sponge.registerSource(source).block();
         StepVerifier.create(sponge.requestContent(url))
-                .then(() -> assertEquals(java.util.List.of(0), writes))
+                .then(() -> assertEquals(metadataExists ? java.util.List.of(0, 1) : java.util.List.of(0), writes))
                 .then(() -> firstWrite.tryEmitEmpty())
                 .expectNext(first, last)
                 .expectComplete().verify(Duration.ofSeconds(5));
