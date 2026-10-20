@@ -199,7 +199,22 @@ class DiskCacheImpl implements DiskCache {
 			return;
 		}
 
+		if (dataBlock == null || dataBlock.getOffset() < 0 || dataBlock.getOffset() % BLOCK_SIZE != 0
+				|| dataBlock.getOffset() / BLOCK_SIZE > Integer.MAX_VALUE || dataBlock.getLength() < 0
+				|| dataBlock.getLength() > BLOCK_SIZE || dataBlock.getData() == null
+				|| dataBlock.getData().size() != dataBlock.getLength()) {
+			throw new IllegalStateException("Invalid file block");
+		}
 		Buf urlKey = resolveAliasKey(serializeUrl(url));
+		var metadataBytes = fileMetadata.get(null, urlKey);
+		if (metadataBytes == null) throw new IllegalStateException("Metadata not found for url key: " + urlKey);
+		var metadata = deserializeMetadata(metadataBytes);
+		if (metadata.size() != -1) {
+			FileSponge.validateBlock(dataBlock, dataBlock.getId(), metadata.size());
+		} else if (dataBlock.getId() > metadata.downloadedBlocks().size()) {
+			throw new IndexOutOfBoundsException("Trying to write a block too much far from the last block. Previous total blocks: "
+					+ metadata.downloadedBlocks().size() + " Current block id: " + dataBlock.getId());
+		}
 		Buf blockKey = getBlockKey(urlKey, dataBlock.getId());
 
 		fileContent.put(blockKey, dataBlock.getData(), LLDictionaryResultType.VOID);
