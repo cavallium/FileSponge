@@ -11,6 +11,9 @@ import it.cavallium.dbengine.database.UpdateReturnMode;
 import it.cavallium.dbengine.database.serialization.DatabaseDataInput;
 import it.cavallium.dbengine.database.serialization.SerializationFunction;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,6 +71,145 @@ public class DiskCacheImplTest {
                 7, new BooleanArrayList(new boolean[]{true}))));
         when(fileContent.get(eq(null), any())).thenReturn(Buf.wrap(new byte[6]));
         assertThrows(IllegalStateException.class, () -> diskCache.requestContentBlockSync(url, 0));
+    }
+
+    @Test
+    void sequentialCachedReadRejectsShortIntermediateFinalAndMissingBlocks() {
+        URL url = mockUrl("corrupt-stream");
+        Buf key = serialize(url);
+        when(fileMetadata.get(null, key)).thenReturn(serializeMetadata(new DiskMetadata(
+                FileSponge.BLOCK_SIZE + 7L, new BooleanArrayList(new boolean[]{true, true}))));
+        for (var invalid : List.of(Buf.wrap(new byte[6]), Buf.wrap(new byte[FileSponge.BLOCK_SIZE - 1]))) {
+            when(fileContent.get(null, getBlockKey(key, 0))).thenReturn(invalid);
+            when(fileContent.get(null, getBlockKey(key, 1))).thenReturn(Buf.wrap(new byte[7]));
+            try (var stream = diskCache.requestContentSync(url)) {
+                assertThrows(IllegalStateException.class, stream::toList);
+            }
+        }
+        when(fileContent.get(null, getBlockKey(key, 0))).thenReturn(Buf.wrap(new byte[FileSponge.BLOCK_SIZE]));
+        when(fileContent.get(null, getBlockKey(key, 1))).thenReturn(Buf.wrap(new byte[6]));
+        try (var stream = diskCache.requestContentSync(url)) {
+            assertThrows(IllegalStateException.class, stream::toList);
+        }
+        when(fileContent.get(null, getBlockKey(key, 1))).thenReturn(null);
+        try (var stream = diskCache.requestContentSync(url)) {
+            assertThrows(IllegalStateException.class, stream::toList);
+        }
+    }
+
+    @Test
+    void unknownSizeCacheNeverClaimsACompleteFile() {
+        URL url = mockUrl("unfinished");
+        when(fileMetadata.get(null, serialize(url))).thenReturn(serializeMetadata(
+                new DiskMetadata(-1, new BooleanArrayList(new boolean[]{true}))));
+        try (var stream = diskCache.requestContentSync(url)) {
+            assertEquals(0, stream.count());
+        }
+        verifyNoInteractions(fileContent);
+    }
+
+    @Test
+    void invalidKnownSizeWritesAndOverwritesLeaveContentAndMetadataUntouched() {
+        var content = backing(fileContent);
+        var metadata = backing(fileMetadata);
+        URL url = mockUrl("validated-block");
+        Buf key = serialize(url);
+        var invalid = java.util.Arrays.asList(
+                DataBlock.of(0, 3, Buf.wrap(new byte[3])),
+                DataBlock.of(0, 5, Buf.wrap(new byte[5])),
+                DataBlock.of(1, 4, Buf.wrap(new byte[4])),
+                DataBlock.of(-1, 4, Buf.wrap(new byte[4])),
+                DataBlock.of(FileSponge.BLOCK_SIZE, 4, Buf.wrap(new byte[4])),
+                DataBlock.of(0, 4, Buf.wrap(new byte[3])),
+                DataBlock.of(0, 4, null),
+                DataBlock.of(Long.MAX_VALUE, 4, Buf.wrap(new byte[4])), null);
+        for (boolean overwrite : List.of(false, true)) {
+            var originalMetadata = serializeMetadata(new DiskMetadata(4, new BooleanArrayList(new boolean[]{overwrite})));
+            metadata.put(key, originalMetadata);
+            content.clear();
+            if (overwrite) content.put(getBlockKey(key, 0), Buf.wrap(new byte[]{1, 2, 3, 4}));
+            var originalContent = new HashMap<>(content);
+            clearInvocations(fileContent, fileMetadata);
+            for (var block : invalid) {
+                assertThrows(IllegalStateException.class, () -> diskCache.writeContentBlockSync(url, block, true));
+                assertEquals(originalContent, content);
+                assertEquals(originalMetadata, metadata.get(key));
+            }
+            verify(fileContent, never()).put(any(), any(), any());
+            verify(fileMetadata, never()).update(any(), any(), any());
+        }
+    }
+
+    @Test
+    void validKnownSizeFullAndFinalBlocksBecomeReadableAndComplete() {
+        var content = backing(fileContent);
+        var metadata = backing(fileMetadata);
+        URL url = mockUrl("valid-tail");
+        Buf key = serialize(url);
+        metadata.put(key, serializeMetadata(new DiskMetadata(FileSponge.BLOCK_SIZE + 3L,
+                new BooleanArrayList(new boolean[]{false, false}))));
+        diskCache.writeContentBlockSync(url, DataBlock.of(0, FileSponge.BLOCK_SIZE,
+                Buf.wrap(new byte[FileSponge.BLOCK_SIZE])), true);
+        assertFalse(diskCache.requestDiskMetadataSync(url).isDownloadedFully());
+        var tail = DataBlock.of(FileSponge.BLOCK_SIZE, 3, Buf.wrap(new byte[]{1, 2, 3}));
+        diskCache.writeContentBlockSync(url, tail, true);
+        assertTrue(diskCache.requestDiskMetadataSync(url).isDownloadedFully());
+        assertEquals(tail, diskCache.requestContentBlockSync(url, 1));
+        assertEquals(2, content.size());
+    }
+
+    @Test
+    void unknownSizeAcceptsSequentialFullAndTailBlocksButRejectsMalformedBlocksAndGaps() {
+        var content = backing(fileContent);
+        var metadata = backing(fileMetadata);
+        URL url = mockUrl("unknown-tail");
+        Buf key = serialize(url);
+        var initialMetadata = serializeMetadata(new DiskMetadata(-1, new BooleanArrayList()));
+        metadata.put(key, initialMetadata);
+        var invalid = List.of(
+                DataBlock.of(-FileSponge.BLOCK_SIZE, 1, Buf.wrap(new byte[1])),
+                DataBlock.of(1, 1, Buf.wrap(new byte[1])),
+                DataBlock.of(0, -1, Buf.wrap(new byte[0])),
+                DataBlock.of(0, FileSponge.BLOCK_SIZE + 1, Buf.wrap(new byte[FileSponge.BLOCK_SIZE + 1])),
+                DataBlock.of(0, 3, Buf.wrap(new byte[2])));
+        for (var block : invalid) {
+            assertThrows(IllegalStateException.class, () -> diskCache.writeContentBlockSync(url, block, true));
+        }
+        assertThrows(IndexOutOfBoundsException.class, () -> diskCache.writeContentBlockSync(url,
+                DataBlock.of(FileSponge.BLOCK_SIZE, 3, Buf.wrap(new byte[3])), true));
+        assertTrue(content.isEmpty());
+        assertEquals(initialMetadata, metadata.get(key));
+        diskCache.writeContentBlockSync(url, DataBlock.of(0, FileSponge.BLOCK_SIZE,
+                Buf.wrap(new byte[FileSponge.BLOCK_SIZE])), true);
+        diskCache.writeContentBlockSync(url, DataBlock.of(FileSponge.BLOCK_SIZE, 3, Buf.wrap(new byte[3])), true);
+        assertEquals(-1, diskCache.requestDiskMetadataSync(url).size());
+        assertEquals(new BooleanArrayList(new boolean[]{true, true}), diskCache.requestDiskMetadataSync(url).downloadedBlocks());
+        assertEquals(FileSponge.BLOCK_SIZE, content.get(getBlockKey(key, 0)).size());
+        assertEquals(3, content.get(getBlockKey(key, 1)).size());
+    }
+
+    @Test
+    void unknownSizeFormatLimitRejectsBlockBeforeWritingContent() {
+        var content = backing(fileContent);
+        var metadata = backing(fileMetadata);
+        URL url = mockUrl("format-limit");
+        Buf key = serialize(url);
+        var original = serializeMetadata(new DiskMetadata(-1, new BooleanArrayList(new boolean[65535])));
+        metadata.put(key, original);
+        assertThrows(IllegalArgumentException.class, () -> diskCache.writeContentBlockSync(url,
+                DataBlock.of(65535L * FileSponge.BLOCK_SIZE, 1, Buf.wrap(new byte[1])), true));
+        assertTrue(content.isEmpty());
+        assertEquals(original, metadata.get(key));
+    }
+
+    @Test
+    void absentMetadataRejectsBlockBeforeWritingContent() {
+        var content = backing(fileContent);
+        var metadata = backing(fileMetadata);
+        assertThrows(IllegalStateException.class, () -> diskCache.writeContentBlockSync(mockUrl("absent"),
+                DataBlock.of(0, 3, Buf.wrap(new byte[3])), true));
+        assertTrue(content.isEmpty());
+        assertTrue(metadata.isEmpty());
     }
 
     @Test
@@ -295,6 +437,23 @@ public class DiskCacheImplTest {
         System.out.println("StoredFileURL key2 content: " + key2);
 
         assertNotEquals(key1, key2, "Serialized StoredFileURLs should be different");
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<Buf, Buf> backing(LLDictionary dictionary) {
+        var values = new HashMap<Buf, Buf>();
+        when(dictionary.get(eq(null), any(Buf.class))).thenAnswer(invocation -> values.get(invocation.getArgument(1)));
+        doAnswer(invocation -> {
+            values.put(invocation.getArgument(0), invocation.getArgument(1));
+            return null;
+        }).when(dictionary).put(any(Buf.class), any(Buf.class), eq(LLDictionaryResultType.VOID));
+        doAnswer(invocation -> {
+            Buf key = invocation.getArgument(0);
+            SerializationFunction<Buf, Buf> updater = invocation.getArgument(1);
+            values.put(key, updater.apply(values.get(key)));
+            return null;
+        }).when(dictionary).update(any(Buf.class), any(), eq(UpdateReturnMode.NOTHING));
+        return values;
     }
 
     private Buf getBlockKey(Buf urlKey, int blockId) {

@@ -139,7 +139,7 @@ public class FileSponge implements URLsHandlerCached {
 						logger.debug("File \"{}\" content has been found in the cache", url);
 					}
 				})
-				.switchIfEmpty(Mono
+				.switchIfEmpty(Mono.defer(() -> requestMetadata(url)).then(Mono
 						.fromCallable(() -> {
 							logger.debug("Downloading file \"{}\" content", url);
 							var uh = this.urlsHandlers;
@@ -147,7 +147,7 @@ public class FileSponge implements URLsHandlerCached {
 							for (URLsHandler urlsHandler : uh) {
 								contentRequestsAndCaching.add(urlsHandler
 										.requestContent(url)
-										.flatMapSequential(dataBlock -> {
+										.concatMap(dataBlock -> {
 											var cw = this.cacheWrite;
 											List<Mono<Void>> cacheWriteActions = new ArrayList<>(cw.size());
 											for (URLsWriter urlsWriter : cw) {
@@ -159,7 +159,7 @@ public class FileSponge implements URLsHandlerCached {
 							}
 							return contentRequestsAndCaching;
 						})
-						.flatMapMany(FileSpongeUtils::firstWithValueFlux)
+						).flatMapMany(FileSpongeUtils::firstWithValueFlux)
 						.doOnComplete(() -> logger.debug("Downloaded file \"{}\" content", url))
 				)
 				.distinct(DataBlock::getId)
@@ -188,6 +188,7 @@ public class FileSponge implements URLsHandlerCached {
 	@Override
 	public Mono<Metadata> requestMetadata(URL url) {
 		return requestCachedMetadata(url)
+				.filter(metadata -> metadata.size() != -1)
 				.switchIfEmpty(Mono
 						.fromCallable(() -> {
 							logger.debug("Downloading file \"{}\" metadata", url);
@@ -216,6 +217,7 @@ public class FileSponge implements URLsHandlerCached {
 								logger.debug("File \"{}\" metadata has not been found anywhere", url);
 							}
 						})
-				);
+				)
+				.switchIfEmpty(requestCachedMetadata(url));
 	}
 }

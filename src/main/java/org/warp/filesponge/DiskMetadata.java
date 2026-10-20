@@ -33,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 public record DiskMetadata(long size, BooleanArrayList downloadedBlocks) {
 
 	public boolean isDownloadedFully() {
+		if (size == -1) return false;
 		boolean downloadedFullyVal;
 		// Ensure blocks count is valid by calling getBlocksCount()
 		getBlocksCount();
@@ -56,10 +57,13 @@ public record DiskMetadata(long size, BooleanArrayList downloadedBlocks) {
 	}
 
 	public static int getBlocksCount(long size, int blockSize) {
+		if (size < -1 || blockSize <= 0) {
+			throw new IllegalArgumentException("Invalid file size or block size");
+		}
 		if (size == -1L || size == 0) {
 			return 0;
 		}
-		return toIntExact((size + blockSize - 1) / blockSize);
+		return toIntExact(1 + (size - 1) / blockSize);
 	}
 
 	public Metadata asMetadata() {
@@ -87,7 +91,7 @@ public record DiskMetadata(long size, BooleanArrayList downloadedBlocks) {
 			}
 			int blocksCount;
 			if (size == -1) {
-				blocksCount = dis.readShort();
+				blocksCount = dis.readUnsignedShort();
 			} else {
 				blocksCount = getBlocksCount(size, FileSponge.BLOCK_SIZE);
 			}
@@ -104,6 +108,9 @@ public record DiskMetadata(long size, BooleanArrayList downloadedBlocks) {
 			dos.writeLong(deserialized.size);
 			var blocksCount = deserialized.getBlocksCount();
 			if (deserialized.size == -1) {
+				if (blocksCount > 0xffff) {
+					throw new IllegalArgumentException("Too many blocks for unknown file size");
+				}
 				dos.writeShort(blocksCount);
 			}
 			for (boolean downloadedBlock : deserialized.downloadedBlocks) {

@@ -199,7 +199,24 @@ class DiskCacheImpl implements DiskCache {
 			return;
 		}
 
+		if (dataBlock == null || dataBlock.getOffset() < 0 || dataBlock.getOffset() % BLOCK_SIZE != 0
+				|| dataBlock.getOffset() / BLOCK_SIZE > Integer.MAX_VALUE || dataBlock.getLength() < 0
+				|| dataBlock.getLength() > BLOCK_SIZE || dataBlock.getData() == null
+				|| dataBlock.getData().size() != dataBlock.getLength()) {
+			throw new IllegalStateException("Invalid file block");
+		}
 		Buf urlKey = resolveAliasKey(serializeUrl(url));
+		var metadataBytes = fileMetadata.get(null, urlKey);
+		if (metadataBytes == null) throw new IllegalStateException("Metadata not found for url key: " + urlKey);
+		var metadata = deserializeMetadata(metadataBytes);
+		if (metadata.size() != -1) {
+			FileSponge.validateBlock(dataBlock, dataBlock.getId(), metadata.size());
+		} else if (dataBlock.getId() >= 0xffff) {
+			throw new IllegalArgumentException("Too many blocks for unknown file size");
+		} else if (dataBlock.getId() > metadata.downloadedBlocks().size()) {
+			throw new IndexOutOfBoundsException("Trying to write a block too much far from the last block. Previous total blocks: "
+					+ metadata.downloadedBlocks().size() + " Current block id: " + dataBlock.getId());
+		}
 		Buf blockKey = getBlockKey(urlKey, dataBlock.getId());
 
 		fileContent.put(blockKey, dataBlock.getData(), LLDictionaryResultType.VOID);
@@ -297,19 +314,12 @@ class DiskCacheImpl implements DiskCache {
 					Buf urlKey = resolveAliasKey(serializeUrl(url));
 					var blockKey = getBlockKey(urlKey, blockMeta.blockId);
 					var data = fileContent.get(null, blockKey);
-					long blockOffset = getBlockOffset(blockMeta.blockId);
-					int blockLength = data.size();
-					if (meta.size() != -1) {
-						if (blockOffset + blockLength >= meta.size()) {
-							if (blockOffset + blockLength > meta.size()) {
-								throw new IllegalStateException("Overflowed data size");
-							}
-						} else {
-							// Intermediate blocks must be of max size
-							assert data.size() == BLOCK_SIZE;
-						}
+					if (data == null) {
+						throw new IllegalStateException("Missing cached file block " + blockMeta.blockId);
 					}
-					return DataBlock.of(blockOffset, blockLength, data);
+					var block = DataBlock.of(getBlockOffset(blockMeta.blockId), data.size(), data);
+					FileSponge.validateBlock(block, blockMeta.blockId, meta.size());
+					return block;
 				}).filter(Objects::nonNull);
 	}
 

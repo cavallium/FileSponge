@@ -77,6 +77,31 @@ class FileSpongeBlockTest {
 	}
 
 	@Test
+	void staleUnknownCacheMetadataIsRefreshedBeforeDirectRead() {
+		var sponge = new FileSponge();
+		var cache = mock(DiskCache.class);
+		var expected = block(4, 3);
+		when(cache.requestMetadata(url)).thenReturn(Mono.just(new Metadata(-1)));
+		when(cache.requestContentBlock(url, 4)).thenReturn(Mono.empty());
+		when(cache.writeMetadata(eq(url), any(), eq(false))).thenReturn(Mono.empty());
+		when(cache.writeContentBlock(url, expected, false)).thenReturn(Mono.empty());
+		sponge.registerCache(cache).block();
+		sponge.registerSource(source(new AtomicInteger(), expected)).block();
+		assertSame(expected, sponge.requestContentBlock(url, 4).block());
+		verify(cache, atLeastOnce()).writeMetadata(url, new Metadata(size), false);
+	}
+
+	@Test
+	void unknownCachedMetadataRemainsAvailableWithoutAnOnlineProvider() {
+		var sponge = new FileSponge();
+		var cache = mock(DiskCache.class);
+		when(cache.requestMetadata(url)).thenReturn(Mono.just(new Metadata(-1)));
+		sponge.registerCache(cache).block();
+		assertEquals(new Metadata(-1), sponge.requestMetadata(url).block());
+		StepVerifier.create(sponge.requestContentBlock(url, 0)).expectError(IllegalStateException.class).verify();
+	}
+
+	@Test
 	void unknownSizeNeverDownloadsBlock() {
 		var sponge = new FileSponge();
 		var source = mock(URLsHandler.class);
