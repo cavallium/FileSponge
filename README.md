@@ -14,7 +14,7 @@ Originally created to retrieve specific files from multiple sources (e.g., Teleg
 
 ## Requirements
 
-*   Java 25 or higher
+*   Java 27 or higher
 *   Maven
 
 ## Dependencies

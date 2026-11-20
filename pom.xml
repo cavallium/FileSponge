@@ -63,6 +63,11 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>io.soabase.record-builder</groupId>
 			<artifactId>record-builder-core</artifactId>
 			<scope>provided</scope>
@@ -86,7 +91,7 @@
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-core</artifactId>
-			<version>3.6.0</version>
+			<version>5.24.0</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -96,12 +101,17 @@
 			<dependency>
 				<groupId>org.junit.jupiter</groupId>
 				<artifactId>junit-jupiter-api</artifactId>
-				<version>5.9.0</version>
+				<version>5.10.1</version>
+			</dependency>
+			<dependency>
+				<groupId>org.junit.jupiter</groupId>
+				<artifactId>junit-jupiter-engine</artifactId>
+				<version>5.10.1</version>
 			</dependency>
 			<dependency>
 				<groupId>io.soabase.record-builder</groupId>
 				<artifactId>record-builder-core</artifactId>
-				<version>36</version>
+				<version>43</version>
 			</dependency>
 			<dependency>
 				<groupId>org.jetbrains</groupId>
@@ -132,9 +142,9 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.14.1</version>
+				<version>3.16.0</version>
 				<configuration>
-					<release>25</release>
+					<release>27</release>
 					<annotationProcessorPaths>
 						<annotationProcessorPath>
 							<groupId>io.soabase.record-builder</groupId>
@@ -146,6 +156,26 @@
 						<annotationProcessor>io.soabase.recordbuilder.processor.RecordBuilderProcessor</annotationProcessor>
 					</annotationProcessors>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<version>3.7.0</version>
+				<executions>
+					<execution>
+						<id>enforce-java</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireJavaVersion>
+									<version>[27,)</version>
+								</requireJavaVersion>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 		<pluginManagement>
@@ -163,9 +193,10 @@
 				</plugin>
 				<plugin>
 					<artifactId>maven-surefire-plugin</artifactId>
-					<version>3.0.0-M5</version>
+					<version>3.6.1</version>
 					<configuration>
 						<useModulePath>false</useModulePath>
+						<argLine>-XX:+EnableDynamicAgentLoading</argLine>
 					</configuration>
 				</plugin>
 				<plugin>
